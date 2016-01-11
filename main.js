@@ -346,9 +346,16 @@ Hex.prototype.clearRoute = function () {
 
 Hex.prototype.setRoute = function () {
     _.each(this.neighbors, function (hex) {
-        if (!hex.isBorder && !hex.routeHex) {
+        if (!hex.isBorder && !hex.routeHex && !hex.structure) {
             hex.routeHex = this;
-            hex.setRoute();
+        }
+    }, this);
+
+    _.each(this.neighbors, function (hex) {
+        if (hex.routeHex) {
+            if (_.reject(_.reject(hex.neighbors, "routeHex"), "structure").length) {
+                hex.setRoute();
+            }
         }
     }, this);
 };
@@ -444,6 +451,10 @@ var circle = new Circle({
     vx: function () {
         return 4 * Math.sin(frameCount * Math.PI / 180);
     }
+});
+
+_.each([106, 271, 317, 367, 208, 91], function (index) {
+        hexes[index].structure = true;
 });
 
 var monster = new Monster({ hex: entranceHex });
