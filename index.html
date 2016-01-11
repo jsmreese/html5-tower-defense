@@ -3,10 +3,17 @@
         <title>HTML5 Tower Defense</title>
     </head>
 
-    <body>
+    <body style="background-color: #888;">
         <div id="main">
+            <canvas id="sq" width="20" height="20" style="position: absolute; display: none;">
+            </canvas>
+            <canvas id="grid" width="640" height="480" style="position: absolute; background-color: #fff;">
+            </canvas>
+            <canvas id="fg" width="640" height="480" style="position: absolute;">
+            </canvas>
         </div>
-        <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+        <!--script src="https://code.jquery.com/jquery-2.1.4.min.js"></script-->
+        <script src="lodash.js"></script>
         <script src="main.js"></script>
     </body>
 </html>
