@@ -345,6 +345,12 @@ Hex.prototype.clearRoute = function () {
 };
 
 Hex.prototype.setRoute = function () {
+    var routeHexes = [this];
+
+    //_.each(routeHexes, function (hex) {
+    //    if (!hex.isBorder && !hex.routeHex && !hex.structure && !_.find)
+    //});
+
     _.each(this.neighbors, function (hex) {
         if (!hex.isBorder && !hex.routeHex && !hex.structure) {
             hex.routeHex = this;
