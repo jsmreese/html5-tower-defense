@@ -228,6 +228,16 @@ Monster.prototype.setHex = function (hex) {
     this.x = hex.x;
     this.y = hex.y;
 };
+
+Monster.prototype.update = function (context) {
+    this.move();
+    this.draw(context);
+
+    if (this.hex && !this.targetHex) {
+        this.setTargetHex();
+    }
+}
+
 /*
 Monster.prototype.findTargetHex = function () {
     function hasExit(path) {
@@ -345,12 +355,29 @@ Hex.prototype.clearRoute = function () {
 };
 
 Hex.prototype.setRoute = function () {
-    var routeHexes = [this];
+    var stepHexes = [this];
+    var nextStepHexes;
+
+    while (stepHexes.length) {
+        nextStepHexes = [];
+
+        _.each(stepHexes, function (stepHex) {
+            _.each(stepHex.neighbors, function (hex) {
+                if (!hex.isBorder && !hex.routeHex && !hex.structure) {
+                    hex.routeHex = stepHex;
+                    nextStepHexes.push(hex);
+                }
+            });
+        });
+
+        stepHexes = nextStepHexes;
+    }
+
 
     //_.each(routeHexes, function (hex) {
     //    if (!hex.isBorder && !hex.routeHex && !hex.structure && !_.find)
     //});
-
+/*
     _.each(this.neighbors, function (hex) {
         if (!hex.isBorder && !hex.routeHex && !hex.structure) {
             hex.routeHex = this;
@@ -364,6 +391,7 @@ Hex.prototype.setRoute = function () {
             }
         }
     }, this);
+*/
 };
 
 Hex.prototype.drawRoute = function (context) {
@@ -447,7 +475,7 @@ _.each(_.find(hexes, { i: -9, j: 10, k: -1 }).neighbors, function (hex) {
 
 _.each(hexes, function (hex, index) {
     hex.draw(grid);
-    grid.strokeText(index, hex.x - 10, hex.y + 20);
+    grid.strokeText(index, hex.x - 10, hex.y + 10);
 });
 
 
@@ -459,36 +487,36 @@ var circle = new Circle({
     }
 });
 
-_.each([106, 271, 317, 367, 208, 91], function (index) {
+_.each([106, 271, 317, 367, 208, 91, 300], function (index) {
         hexes[index].structure = true;
 });
 
-var monster = new Monster({ hex: entranceHex });
-
+var monsters = [];
 var frameCount = 0;
 
 function render() {
     clear(fg);
 
-    _.each(hexes, function (hex) {
-        hex.clearRoute();
-    });
+    if (frameCount % 180 === 0) {
+        monsters.push(new Monster({ hex: entranceHex }));
+    }
+
+    if (frameCount / 180 === 5) {
+        _.each([60, 77, 94, 111, 71, 67, 104, 105, 69, 73, 58, 56, 55, 88, 90], function (index) {
+                hexes[index].structure = true;
+        });
+    }
+
+    _.each(hexes, _.method("clearRoute"));
 
     exitHex.setRoute();
 
-    _.each(hexes, function (hex) {
-        hex.drawRoute(fg);
-    });
+    _.each(hexes, _.method("drawRoute", fg));
 
-    circle.move();
-    circle.draw(fg);
+    //circle.move();
+    //circle.draw(fg);
 
-    monster.move();
-    monster.draw(fg);
-
-    if (monster.hex && !monster.targetHex) {
-        monster.setTargetHex();
-    }
+    _.each(monsters, _.method("update", fg));
 
     //_.each(hexes, function (hex) {
     //    hex.draw(grid);
