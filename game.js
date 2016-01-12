@@ -125,7 +125,7 @@
 
     Monster.prototype = new Circle();
     Monster.prototype.defaults = {
-        vh: 0.5
+        vh: 0.8
     };
 
     Monster.prototype.move = function () {
