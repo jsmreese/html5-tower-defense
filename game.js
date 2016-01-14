@@ -40,6 +40,19 @@
 
         _.each(monsters, _.method("update", layer[3]));
 
+        _.each(hexes, function (hex) {
+            if (hex.isMiddle) {
+                this.color = null;
+            }
+        });
+
+        if (highlightHex
+            && !_.find(monsters, { hex: highlightHex })
+            && !_.find(monsters, { targetHex: highlightHex })) {
+            highlightHex.color = "yellow";
+            highlightHex.draw(layer[4]);
+        }
+
         frameCount += 1;
 
         !isPaused && requestAnimationFrame(render);
@@ -177,6 +190,44 @@
         }
     }
 
+    function HexFromXY(x, y) {
+        var ref, i, j, k;
+
+        ref = hexes[0];
+
+        i = 4 / 3 * (x - WIDTH / 2) / ref.width;
+        k = (y - HEIGHT / 2) / ref.height - i / 2;
+        j = 0 - i - k;
+
+        return _.find(hexes, RoundIJK(i, j, k));
+    }
+
+    function RoundIJK(i, j, k) {
+        var ri, rj, rk, di, dj, dk;
+
+        ri = Math.round(i);
+        rj = Math.round(j);
+        rk = Math.round(k);
+
+        di = Math.abs(ri - i)
+        dj = Math.abs(rj - j)
+        dk = Math.abs(rk - k)
+
+        if (di > dj && di > dk) {
+            ri = 0 - rj - rk;
+        }
+
+        else if (dj > dk) {
+            rj = 0 - ri - rk
+        }
+
+        else {
+            rk = 0 - ri -rj;
+        }
+
+        return { i: ri, j: rj, k: rk };
+    }
+
     function Hex(init) {
         _.extend(this, this.defaults, init);
 
@@ -280,6 +331,7 @@
 
     var entranceHex;
     var exitHex;
+    var highlightHex;
 
     var hexes = [];
     var range = _.range(-20, 20);
@@ -334,9 +386,15 @@
 
     $layers.each(setupCanvas);
 
-    $layers.last().on("mousemove", function (e) {
-        console.log(e);
-    });
+    $layers.last().on("mousemove", _.throttle(function (e) {
+        var hex = HexFromXY(e.offsetX, e.offsetY);
+
+        highlightHex = null;
+
+        if (hex.isMiddle && !hex.structure) {
+            highlightHex = hex;
+        }
+    }, 10));
 
     // draw grid
     _.each(hexes, function (hex, index) {

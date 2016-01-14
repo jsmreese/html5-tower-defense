@@ -4,6 +4,10 @@
     border-radius: 10px;
 }
 
+.game canvas:last-of-type {
+    opacity: 0.4;
+}
+
 .game .background {
     background-color: #fff;
 }
