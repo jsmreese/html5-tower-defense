@@ -2,61 +2,215 @@
     var $ = window.jQuery;
     var _ = window._;
 
-    var WIDTH = 712;
-    var HEIGHT = 500;
+    function Game(init) {
+        _.extend(this, this.defaults, init);
+        _.bindAll(this, "play", "pause", "debug", "render");
 
-    function play() {
-        isPaused = false;
-        render();
-    }
+        this.$document = $(document);
+        this.$layers = this.$document.find("canvas");
+        this.layer = {};
 
-    function pause() {
-        isPaused = true;
-    }
+        this.hexes = [];
+        this.range = _.range(-20, 20);
 
-    function setupCanvas(index, elem) {
-        elem.width = WIDTH;
-        elem.height = HEIGHT;
-        layer[index] = elem.getContext("2d");
-    }
+        this.monsters = [];
 
-    function clear(context) {
-        context.clearRect(0, 0, WIDTH, HEIGHT);
-    }
+        this.$layers.each(_.bind(this.setupContext, this));
 
-    function render() {
-        clear(layer[3]);
-        clear(layer[4]);
+        this.$layers.last().on("mousemove", _.bind(_.throttle(function (e) {
+            var hex = this.hexFromXY(e.offsetX, e.offsetY);
 
-        if (frameCount % 180 === 0) {
-            monsters.push(new Monster({ hex: entranceHex }));
-        }
+            this.hoveredHex = null;
 
-        _.each(hexes, _.method("clearRoute"));
-
-        exitHex.setRoute();
-
-        _.each(hexes, _.method("drawRoute", layer[3]));
-
-        _.each(monsters, _.method("update", layer[3]));
-
-        _.each(hexes, function (hex) {
-            if (hex.isMiddle) {
-                this.color = null;
+            if (hex.isMiddle && !hex.structure) {
+                this.hoveredHex = hex;
             }
-        });
+        }, 10), this));
 
-        if (highlightHex
-            && !_.find(monsters, { hex: highlightHex })
-            && !_.find(monsters, { targetHex: highlightHex })) {
-            highlightHex.color = "yellow";
-            highlightHex.draw(layer[4]);
+        this.$layers.last().on("mouseleave", _.bind(function (e) {
+            this.hoveredHex = null;
+        }, this));
+
+        this.setupHexes();
+
+        return this;
+    }
+
+    Game.prototype.exports = function () {
+        return {
+            play: this.play,
+            pause: this.pause,
+            debug: this.debug
+        };
+    };
+
+    Game.prototype.defaults = {
+        height: 500,
+        width: 712,
+        frameCount: 0,
+        isPaused: true
+    };
+
+    Game.prototype.hexFromXY = function (x, y) {
+        var ref, i, j, k;
+
+        ref = this.hexes[0];
+
+        i = 4 / 3 * (x - this.width / 2) / ref.width;
+        k = (y - this.height / 2) / ref.height - i / 2;
+        j = 0 - i - k;
+
+        return _.find(this.hexes, this.roundIJK(i, j, k));
+    };
+
+    Game.prototype.roundIJK = function (i, j, k) {
+        var ri, rj, rk, di, dj, dk;
+
+        ri = Math.round(i);
+        rj = Math.round(j);
+        rk = Math.round(k);
+
+        di = Math.abs(ri - i)
+        dj = Math.abs(rj - j)
+        dk = Math.abs(rk - k)
+
+        if (di > dj && di > dk) {
+            ri = 0 - rj - rk;
         }
 
-        frameCount += 1;
+        else if (dj > dk) {
+            rj = 0 - ri - rk
+        }
 
-        !isPaused && requestAnimationFrame(render);
-    }
+        else {
+            rk = 0 - ri -rj;
+        }
+
+        return { i: ri, j: rj, k: rk };
+    };
+
+    Game.prototype.play = function () {
+        this.isPaused = false;
+        this.render();
+    };
+
+    Game.prototype.pause = function () {
+        this.isPaused = true;
+    };
+
+    Game.prototype.setupContext = function (index, elem) {
+        elem.width = this.width;
+        elem.height = this.height;
+        this.layer[index] = elem.getContext("2d");
+    };
+
+    Game.prototype.clearContext = function (context) {
+        context.clearRect(0, 0, this.width, this.height);
+    };
+
+    Game.prototype.render = function () {
+        this.clearContext(this.layer[3]);
+        this.clearContext(this.layer[4]);
+
+        if (this.frameCount % 180 === 0) {
+            this.monsters.push(new Monster({ hex: this.entranceHex }));
+        }
+
+        _.each(this.hexes, _.method("clearRoute"));
+
+        this.exitHex.setRoute();
+
+        _.each(this.hexes, _.method("drawRoute", this.layer[3]));
+
+        _.each(this.monsters, _.method("update", this.layer[3]));
+
+        if (this.hoveredHex
+            && !_.find(this.monsters, { hex: this.hoveredHex })
+            && !_.find(this.monsters, { targetHex: this.hoveredHex })) {
+            this.hoveredHex.highlight(this.layer[4]);
+        }
+
+        this.frameCount += 1;
+
+        !this.isPaused && requestAnimationFrame(this.render);
+    };
+
+    Game.prototype.setupHexes = function () {
+        _.each(this.range, _.bind(function (i) {
+            _.each(this.range, _.bind(function (j) {
+                var hex = new Hex({ i: i, j: j, k: 0 - i - j, game: this });
+
+                if (hex.x > (-hex.width) &&
+                    hex.x < (this.width + hex.width) &&
+                    hex.y > (-hex.height) &&
+                    hex.y < (this.height + hex.height)
+                ) {
+                    // top left (entrance)
+                    if (hex.x < hex.width && hex.y < hex.height) {
+                        //hex.color = "lightblue";
+                        hex.isOnRamp = true;
+
+                        if (!this.entranceHex) {
+                            this.entranceHex = hex;
+                        }
+                    }
+
+                    // bottom right (exit)
+                    else if (hex.x > this.width - hex.width && hex.y > this.height - hex.height) {
+                        //hex.color = "lightblue";
+                        hex.isOffRamp = true;
+
+                        this.exitHex = hex;
+                    }
+
+                    else if (hex.x < hex.size || hex.x > this.width - hex.size || hex.y < hex.size || hex.y > this.height - hex.size) {
+                        hex.color = "#bbb";
+                        hex.isBorder = true;
+                    }
+
+                    else {
+                        hex.isMiddle = true;
+                    }
+
+                    this.hexes.push(hex);
+                }
+            }, this));
+        }, this));
+
+        // setup exit
+        this.exitHex.isExit = true;
+
+        // setup neighbors
+        _.each(this.hexes, _.method("setupNeighbors", this.hexes));
+
+        // draw grid
+        _.each(this.hexes, _.bind(function (hex, index) {
+            hex.draw(this.layer[0]);
+
+            // DEBUG
+            this.layer[0].strokeText(index, hex.x - 10, hex.y + 10);
+        }, this));
+    };
+
+    Game.prototype.debug = function (i) {
+        switch (i) {
+            case 1:
+                _.each([106, 271, 317, 367, 208, 91, 300], _.bind(function (index) {
+                        this.hexes[index].structure = true;
+                }, this));
+                break;
+            case 2:
+                _.each([60, 77, 94, 111, 71, 67, 104, 105, 69, 73, 58, 56, 55, 88, 90], _.bind(function (index) {
+                        this.hexes[index].structure = true;
+                }, this));
+                break;
+            case 3:
+                _.each(_.range(118, 130).concat(_.range(150, 162)), _.bind(function (index) {
+                        this.hexes[index].structure = true;
+                }, this));
+                break;
+        }
+    };
 
 
     function Shape(init) {
@@ -87,13 +241,13 @@
         }
     }
 
-    Shape.prototype.fill = function (context) {
-        context.fillStyle = this.color;
+    Shape.prototype.fill = function (context, style) {
+        context.fillStyle = style;
         context.fill();
     }
 
-    Shape.prototype.stroke = function (context) {
-        context.strokeStyle = this.lineColor;
+    Shape.prototype.stroke = function (context, style) {
+        context.strokeStyle = style;
         context.stroke();
     }
 
@@ -101,11 +255,28 @@
         this.path(context);
 
         if (this.color) {
-            this.fill(context);
+            this.fill(context, this.color);
         }
 
         if (this.lineColor) {
-            this.stroke(context);
+            this.stroke(context, this.lineColor);
+        }
+    };
+
+    Shape.prototype.highlight = function (context) {
+        var highlightColor, highlightLineColor;
+
+        highlightColor = this.highlightColor || this.color;
+        highlightLineColor = this.highlightLineColor || this.lineColor;
+
+        this.path(context);
+
+        if (highlightColor) {
+            this.fill(context, highlightColor);
+        }
+
+        if (highlightLineColor) {
+            this.stroke(context, highlightLineColor);
         }
     };
 
@@ -190,43 +361,6 @@
         }
     }
 
-    function HexFromXY(x, y) {
-        var ref, i, j, k;
-
-        ref = hexes[0];
-
-        i = 4 / 3 * (x - WIDTH / 2) / ref.width;
-        k = (y - HEIGHT / 2) / ref.height - i / 2;
-        j = 0 - i - k;
-
-        return _.find(hexes, RoundIJK(i, j, k));
-    }
-
-    function RoundIJK(i, j, k) {
-        var ri, rj, rk, di, dj, dk;
-
-        ri = Math.round(i);
-        rj = Math.round(j);
-        rk = Math.round(k);
-
-        di = Math.abs(ri - i)
-        dj = Math.abs(rj - j)
-        dk = Math.abs(rk - k)
-
-        if (di > dj && di > dk) {
-            ri = 0 - rj - rk;
-        }
-
-        else if (dj > dk) {
-            rj = 0 - ri - rk
-        }
-
-        else {
-            rk = 0 - ri -rj;
-        }
-
-        return { i: ri, j: rj, k: rk };
-    }
 
     function Hex(init) {
         _.extend(this, this.defaults, init);
@@ -234,8 +368,8 @@
         this.width = this.size * 2;
         this.height =  Math.sqrt(3) / 2 * this.width;
 
-        this.x = WIDTH / 2 + 3 / 4 * this.width * this.i;
-        this.y = HEIGHT / 2 + 1 / 2 * this.height * (this.k - this.j);
+        this.x = this.game.width / 2 + 3 / 4 * this.width * this.i;
+        this.y = this.game.height / 2 + 1 / 2 * this.height * (this.k - this.j);
 
         return this;
     };
@@ -246,7 +380,8 @@
         j: 0,
         k: 0,
         size: 20,
-        lineColor: "#88c"
+        lineColor: "#88c",
+        highlightColor: "yellow"
     });
 
     Hex.prototype.path = function (context) {
@@ -319,117 +454,7 @@
         ], "isBorder"));
     };
 
-    var game = {};
-
-    var frameCount = 0;
-    var isPaused = true;
-
-    var $document = $(document);
-    var $layers = $document.find("canvas");
-
-    var layer = {};
-
-    var entranceHex;
-    var exitHex;
-    var highlightHex;
-
-    var hexes = [];
-    var range = _.range(-20, 20);
-
-    var monsters = [];
-
-    _.each(range, function (i) {
-        _.each(range, function (j) {
-            var hex = new Hex({ i: i, j: j, k: 0 - i - j });
-
-            if (hex.x > (-hex.width) &&
-                hex.x < (WIDTH + hex.width) &&
-                hex.y > (-hex.height) &&
-                hex.y < (HEIGHT + hex.height)
-            ) {
-                // top left (entrance)
-                if (hex.x < hex.width && hex.y < hex.height) {
-                    //hex.color = "lightblue";
-                    hex.isOnRamp = true;
-
-                    if (!entranceHex) {
-                        entranceHex = hex;
-                    }
-                }
-
-                // bottom right (exit)
-                else if (hex.x > WIDTH - hex.width && hex.y > HEIGHT - hex.height) {
-                    //hex.color = "lightblue";
-                    hex.isOffRamp = true;
-
-                    exitHex = hex;
-                }
-
-                else if (hex.x < hex.size || hex.x > WIDTH - hex.size || hex.y < hex.size || hex.y > HEIGHT - hex.size) {
-                    hex.color = "#bbb";
-                    hex.isBorder = true;
-                }
-
-                else {
-                    hex.isMiddle = true;
-                }
-
-                hexes.push(hex);
-            }
-        });
-    });
-
-    // setup exit
-    exitHex.isExit = true;
-
-    _.each(hexes, _.method("setupNeighbors", hexes));
-
-    $layers.each(setupCanvas);
-
-    $layers.last().on("mousemove", _.throttle(function (e) {
-        var hex = HexFromXY(e.offsetX, e.offsetY);
-
-        highlightHex = null;
-
-        if (hex.isMiddle && !hex.structure) {
-            highlightHex = hex;
-        }
-    }, 10));
-
-    // draw grid
-    _.each(hexes, function (hex, index) {
-        hex.draw(layer[0]);
-        layer[0].strokeText(index, hex.x - 10, hex.y + 10);
-    });
-
-
-    function debug(i) {
-        switch (i) {
-            case 1:
-                _.each([106, 271, 317, 367, 208, 91, 300], function (index) {
-                        hexes[index].structure = true;
-                });
-                break;
-            case 2:
-                _.each([60, 77, 94, 111, 71, 67, 104, 105, 69, 73, 58, 56, 55, 88, 90], function (index) {
-                        hexes[index].structure = true;
-                });
-                break;
-            case 3:
-                _.each(_.range(118, 130).concat(_.range(150, 162)), function (index) {
-                        hexes[index].structure = true;
-                });
-                break;
-        }
-
-    }
-
-    game.play = play;
-    game.pause = pause;
-    game.render = render;
-    game.debug = debug;
-
     // Export global instance.
-    window.game = game;
+    window.game = new Game().exports();
 
 })(this);
