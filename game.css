@@ -14,11 +14,11 @@
 
 .game .controls-side {
     position: absolute;
-    left: 730;
+    left: 680;
     width: 120;
 }
 
 .game .controls-bottom {
     position: absolute;
-    top: 520;
+    top: 485;
 }

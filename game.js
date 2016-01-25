@@ -1,3 +1,5 @@
+// color scheme http://paletton.com/#uid=63j0u0kw0w0jyC+oRxVy4oIDfjr
+
 (function (window) {
     var $ = window.jQuery;
     var _ = window._;
@@ -9,6 +11,8 @@
         this.$document = $(document);
         this.$layers = this.$document.find("canvas");
         this.$bottom = this.$document.find(".controls-bottom");
+        this.$bottom.children().hide();
+
         this.$side = this.$document.find(".controls-side");
         this.layer = {};
 
@@ -52,6 +56,8 @@
             });
 
             if (this.clickedMonster) {
+                this.$bottom.children(":not(.monster)").hide();
+                this.$bottom.children(".monster").show();
                 return;
             }
 
@@ -61,6 +67,14 @@
             if (this.clickedHex.canBuild()) {
                 this.clickedHex.structure = true;
             }
+
+            if (this.clickedHex.structure) {
+                this.$bottom.children(":not(.structure)").hide();
+                this.$bottom.children(".structure").show();
+                return;
+            }
+
+            this.$bottom.children().hide();
         }, this));
 
         this.setupHexes();
@@ -77,8 +91,8 @@
     };
 
     Game.prototype.defaults = {
-        height: 500,
-        width: 712,
+        height: 465,
+        width: 652,
         frameCount: 0,
         isPaused: true
     };
@@ -150,13 +164,13 @@
 
         this.exitHex.setRoute();
 
-        _.each(this.hexes, _.method("drawRoute", this.layer[3]));
+        _.each(this.hexes, _.method("update", this.layer[3]));
 
         _.each(this.monsters, _.method("update", this.layer[3]));
 
         if (this.clickedMonster) {
             this.clickedMonster.highlight(this.layer[4]);
-            this.updateUI(this.clickedMonster);
+            this.updateControls(this.clickedMonster);
         }
 
         if (this.hoveredHex
@@ -168,6 +182,7 @@
         if (this.clickedHex) {
             this.clickedHex.path(this.layer[4]);
             this.clickedHex.fill(this.layer[4], "green");
+            this.updateControls(this.clickedHex);
         }
 
         this.frameCount += 1;
@@ -175,9 +190,18 @@
         !this.isPaused && requestAnimationFrame(this.render);
     };
 
-    Game.prototype.updateUI = function (item) {
+    Game.prototype.updateControls = function (item) {
         if (item instanceof Monster) {
-            this.$bottom.text("x: " + item.x.toFixed(2) + " -- y: " + item.y.toFixed(2));
+            this.$bottom.children(".monster").find(".position-x").text(item.x.toFixed(2));
+            this.$bottom.children(".monster").find(".position-y").text(item.y.toFixed(2));
+        }
+
+        else if (item instanceof Hex && item.structure) {
+            this.$bottom.children(".structure").find(".position-x").text(item.x.toFixed(2));
+            this.$bottom.children(".structure").find(".position-y").text(item.y.toFixed(2));
+            this.$bottom.children(".structure").find(".position-i").text(item.i);
+            this.$bottom.children(".structure").find(".position-j").text(item.j);
+            this.$bottom.children(".structure").find(".position-k").text(item.k);
         }
     };
 
@@ -210,7 +234,7 @@
                     }
 
                     else if (hex.x < hex.size || hex.x > this.width - hex.size || hex.y < hex.size || hex.y > this.height - hex.size) {
-                        hex.color = "#bbb";
+                        hex.color = "#00595e";
                         hex.isBorder = true;
                     }
 
@@ -234,7 +258,7 @@
             hex.draw(this.layer[0]);
 
             // DEBUG
-            this.layer[0].strokeText(index, hex.x - 10, hex.y + 10);
+            //this.layer[0].strokeText(index, hex.x - 10, hex.y + 10);
         }, this));
     };
 
@@ -430,7 +454,7 @@
         j: 0,
         k: 0,
         size: 20,
-        lineColor: "#88c"
+        lineColor: "#017277"
     });
 
     Hex.prototype.path = function (context) {
@@ -503,15 +527,23 @@
         }
     };
 
-    Hex.prototype.drawRoute = function (context) {
-        if (this.routeHex) {
-            context.beginPath();
-            context.moveTo(this.x, this.y);
-            context.lineTo(this.routeHex.x, this.routeHex.y);
-            context.closePath();
+    Hex.prototype.update = function (context) {
+        if (this.game.debugRoute) {
+            if (this.routeHex) {
+                context.beginPath();
+                context.moveTo(this.x, this.y);
+                context.lineTo(this.routeHex.x, this.routeHex.y);
+                context.closePath();
 
-            context.strokeStyle = "rgba(128, 128, 128, 0.4)";
-            context.stroke();
+                context.strokeStyle = "rgba(128, 128, 128, 0.4)";
+                context.stroke();
+            }
+        }
+
+        if (this.structure) {
+            this.path(context);
+            context.fillStyle = "#ddd";
+            context.fill();
         }
     };
 
