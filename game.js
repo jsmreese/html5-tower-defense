@@ -20,6 +20,8 @@
         this.range = _.range(-20, 20);
 
         this.monsters = [];
+        this.shots = [];
+        this.structures = [];
 
         this.$topLayer = this.$layers.last();
 
@@ -40,6 +42,8 @@
         }, this));
 
         this.$topLayer.on("click", _.bind(function (e) {
+            var structure;
+
             this.clickedMonster = null;
             this.clickedHex = null;
 
@@ -65,7 +69,9 @@
             this.clickedHex = this.hexFromXY(e.offsetX, e.offsetY);
 
             if (this.clickedHex.canBuild()) {
-                this.clickedHex.structure = true;
+                structure = new Structure({ game: this, hex: this.clickedHex });
+                this.structures.push(structure);
+                this.clickedHex.structure = structure;
             }
 
             if (this.clickedHex.structure) {
@@ -164,9 +170,9 @@
 
         this.exitHex.setRoute();
 
-        _.each(this.hexes, _.method("update", this.layer[3]));
-
         _.each(this.monsters, _.method("update", this.layer[3]));
+        _.each(this.hexes, _.method("update", this.layer[3]));
+        _.each(this.shots, _.method("update", this.layer[3]));
 
         if (this.clickedMonster) {
             this.clickedMonster.highlight(this.layer[4]);
@@ -184,6 +190,14 @@
             this.clickedHex.fill(this.layer[4], "green");
             this.updateControls(this.clickedHex);
         }
+
+        // clean up dead or exited monsters
+        this.monsters = _.filter(this.monsters, "hex");
+
+        // clean up off-screen shots
+        this.shots = _.filter(this.shots, _.method("isOnScreen", this));
+
+        this.debugLog();
 
         this.frameCount += 1;
 
@@ -282,6 +296,15 @@
         }
     };
 
+    Game.prototype.debugLog = function () {
+        if (this.frameCount % 300 === 0) {
+            console.info("frame", this.frameCount);
+            console.log("monsters", this.monsters.length);
+            console.log("structures", this.structures.length);
+            console.log("shots", this.shots.length);
+        }
+    };
+
 
     function Shape(init) {
         _.extend(this, this.defaults, init);
@@ -295,6 +318,12 @@
         y: 0,
         vy: 0, // number or function
         ay: 0 // number or function
+    };
+
+    Shape.prototype.setHex = function (hex) {
+        this.hex = hex;
+        this.x = hex.x;
+        this.y = hex.y;
     };
 
     Shape.prototype.move = function () {
@@ -396,12 +425,6 @@
             this.steps = Math.floor(this.targetHex.size / this.vh);
             this.stepsRemaining = this.steps;
         }
-    };
-
-    Monster.prototype.setHex = function (hex) {
-        this.hex = hex;
-        this.x = hex.x;
-        this.y = hex.y;
     };
 
     Monster.prototype.update = function (context) {
@@ -544,6 +567,8 @@
             this.path(context);
             context.fillStyle = "#ddd";
             context.fill();
+
+            this.structure.update(context);
         }
     };
 
@@ -571,6 +596,66 @@
             _.find(hexes, { i: this.i, j: this.j + 1, k: this.k - 1 }),
             _.find(hexes, { i: this.i, j: this.j - 1, k: this.k + 1 })
         ], "isBorder"));
+    };
+
+    function Structure(init) {
+        _.extend(this, this.defaults, init);
+
+        if (this.hex) {
+            this.setHex(this.hex);
+        }
+
+        return this;
+    };
+
+    Structure.prototype = new Circle();
+    Structure.prototype.defaults = {
+        radius: 12,
+        color: "#FC8",
+        rate: 60
+    };
+
+    Structure.prototype.update = function (context) {
+        this.draw(context);
+
+        if (this.game.frameCount % this.rate === 0) {
+            this.game.shots.push(this.shoot());
+        }
+    };
+
+    Structure.prototype.shoot = function () {
+        return new Shot({ x: this.x, y: this.y });
+    };
+
+    function Shot(init) {
+        _.extend(this, this.defaults, init);
+
+        return this;
+    };
+
+    Shot.prototype = new Circle();
+    Shot.prototype.defaults = {
+        radius: 3,
+        color: "#222",
+        vx: 2,
+        vy: 1
+    };
+
+    Shot.prototype.update = function (context) {
+        this.move();
+
+        this.draw(context);
+    };
+
+    Shot.prototype.isOnScreen = function (game) {
+        var hexSize = game.hexes[0].size;
+        var width = game.width;
+        var height = game.height;
+
+        return this.x > 0 - hexSize
+            && this.x < width + hexSize
+            && this.y > 0 - hexSize
+            && this.y < height + hexSize;
     };
 
     // Export global instance.
