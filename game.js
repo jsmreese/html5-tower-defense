@@ -14,6 +14,15 @@
         this.$bottom.children().hide();
 
         this.$side = this.$document.find(".controls-side");
+        this.$side.find(".playpause").on("click", _.bind(function (e) {
+            if (this.isPaused) {
+                this.play();
+                return;
+            }
+
+            this.pause();
+        }, this));
+
         this.layer = {};
 
         this.hexes = [];
@@ -48,16 +57,10 @@
             this.clickedHex = null;
 
             // clicked on a monster
-            this.clickedMonster = _.find(this.monsters, function (monster) {
-                var dx, dy;
-
-                dx = Math.abs(e.offsetX - monster.x);
-                dy = Math.abs(e.offsetY - monster.y);
-
-                return dx < monster.radius
-                    && dy < monster.radius
-                    && Math.pow(dx, 2) + Math.pow(dy, 2) < Math.pow(monster.radius, 2);
-            });
+            this.clickedMonster = _.find(this.monsters, _.method("collisionDetect", {
+                x: e.offsetX,
+                y: e.offsetY
+            }));
 
             if (this.clickedMonster) {
                 this.$bottom.children(":not(.monster)").hide();
@@ -384,6 +387,49 @@
         context.closePath();
     };
 
+    Circle.prototype.collisionDetect = function (obj) {
+        var dx, dy, dr;
+
+        // Early exit for null or undefined x and y.
+        if (obj.x == null || obj.y == null) {
+            return;
+        }
+
+        dx = Math.abs(obj.x - this.x);
+        dy = Math.abs(obj.y - this.y);
+
+        if (obj.length && obj.angle) {
+            dr = this.radius + obj.length;
+
+            if (dx < dr || dy < dr) {
+                return this.collisionDetectLine(obj);
+            }
+        }
+
+        dr = this.radius + obj.radius;
+
+        return dx < dr
+            && dy < dr
+            && Math.pow(dx, 2) + Math.pow(dy, 2) < Math.pow(dr, 2);
+    };
+
+    Circle.prototype.collisionDetectLine = function (obj) {
+        // Interpolate points along line based on line length
+        // and circle's radius. Collision detect against those points.
+        var steps = 1 + Math.ceil(4 * obj.length / this.radius);
+
+        return _.some(_.map(_.range(steps + 1), _.bind(function (step) {
+            var _x, _y, stepLength;
+
+            stepLength = obj.length * step / steps;
+
+            _x = obj.x + 0; // portion of stepLength in x direction
+            _y = obj.y + 0; // portion of stepLength in y direction
+
+            return this.collisionDetect({ x: _x, y: _y });
+        }, this));
+    };
+
     function Monster(init) {
         _.extend(this, this.defaults, init);
 
@@ -457,7 +503,6 @@
 
         return hasRoute;
     };
-
 
     function Hex(init) {
         _.extend(this, this.defaults, init);
