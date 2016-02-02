@@ -423,7 +423,7 @@
                 x: obj.x + (obj.endX - obj.x) * step / steps,
                 y: obj.y + (obj.endY - obj.y) * step / steps
             });
-        }, this));
+        }, this)));
     };
 
     function Monster(init) {
@@ -438,7 +438,8 @@
 
     Monster.prototype = new Circle();
     Monster.prototype.defaults = {
-        vh: 0.2
+        vh: 0.2,
+        health: 4
     };
 
     Monster.prototype.move = function () {
@@ -665,7 +666,7 @@
     };
 
     Structure.prototype.shoot = function () {
-        return new Shot({ x: this.x, y: this.y });
+        return new Shot({ x: this.x, y: this.y, game: this.game });
     };
 
     function Shot(init) {
@@ -683,9 +684,17 @@
     };
 
     Shot.prototype.update = function (context) {
+        var hitMonster;
+
         this.move();
 
         this.draw(context);
+
+        hitMonster = _.find(this.game.monsters, _.method("collisonDetect", this));
+
+        if (hitMonster) {
+            console.warn("HIT", this, hitMonster);
+        }
     };
 
     Shot.prototype.isOnScreen = function (game) {
