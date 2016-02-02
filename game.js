@@ -684,16 +684,16 @@
     };
 
     Shot.prototype.update = function (context) {
-        var hitMonster;
+        var hitMonsters;
 
         this.move();
 
         this.draw(context);
 
-        hitMonster = _.find(this.game.monsters, _.method("collisonDetect", this));
+        hitMonsters = _.compact(_.map(this.game.monsters, _.method("collisonDetect", this)));
 
-        if (hitMonster) {
-            console.warn("HIT", this, hitMonster);
+        if (hitMonsters.length) {
+            console.warn("HIT", this, hitMonsters);
         }
     };
 
