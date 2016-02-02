@@ -398,11 +398,11 @@
         dx = Math.abs(obj.x - this.x);
         dy = Math.abs(obj.y - this.y);
 
-        if (obj.length && obj.angle) {
+        if (obj.endX && obj.endY && obj.angle && obj.length) {
             dr = this.radius + obj.length;
 
             if (dx < dr || dy < dr) {
-                return this.collisionDetectLine(obj);
+                return this.collisionDetectInterpolate(obj);
             }
         }
 
@@ -413,20 +413,16 @@
             && Math.pow(dx, 2) + Math.pow(dy, 2) < Math.pow(dr, 2);
     };
 
-    Circle.prototype.collisionDetectLine = function (obj) {
+    Circle.prototype.collisionDetectInterpolate = function (obj) {
         // Interpolate points along line based on line length
         // and circle's radius. Collision detect against those points.
         var steps = 1 + Math.ceil(4 * obj.length / this.radius);
 
         return _.some(_.map(_.range(steps + 1), _.bind(function (step) {
-            var _x, _y, stepLength;
-
-            stepLength = obj.length * step / steps;
-
-            _x = obj.x + 0; // portion of stepLength in x direction
-            _y = obj.y + 0; // portion of stepLength in y direction
-
-            return this.collisionDetect({ x: _x, y: _y });
+            return this.collisionDetect({
+                x: obj.x + (obj.endX - obj.x) * step / steps,
+                y: obj.y + (obj.endY - obj.y) * step / steps
+            });
         }, this));
     };
 
