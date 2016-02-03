@@ -690,10 +690,13 @@
 
         this.draw(context);
 
-        hitMonsters = _.compact(_.map(this.game.monsters, _.method("collisonDetect", this)));
+        hitMonsters = _.filter(this.game.monsters, _.bind(function (monster) {
+            return monster.collisionDetect(this);
+        }, this));
 
         if (hitMonsters.length) {
             console.warn("HIT", this, hitMonsters);
+            this.game.collision(this, hitMonsters);
         }
     };
 
@@ -710,5 +713,4 @@
 
     // Export global instance.
     window.game = new Game().exports();
-
 })(this);
