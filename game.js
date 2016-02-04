@@ -308,6 +308,15 @@
         }
     };
 
+    Game.prototype.collision = function (obj) {
+        var firstMonster = obj.monsters[0];
+        var damage = obj.shot.damage;
+
+        firstMonster.health -= damage;
+
+        this.shots = _.reject(this.shots, obj.shot);
+    };
+
 
     function Shape(init) {
         _.extend(this, this.defaults, init);
@@ -473,6 +482,10 @@
     Monster.prototype.update = function (context) {
         this.move();
         this.draw(context);
+
+        if (this.health <= 0) {
+            this.hex = null;
+        }
 
         if (this.hex) {
             if (this.hex.isExit) {
@@ -680,7 +693,8 @@
         radius: 3,
         color: "#222",
         vx: 2,
-        vy: 1
+        vy: 1,
+        damage: 2
     };
 
     Shot.prototype.update = function (context) {
@@ -696,7 +710,7 @@
 
         if (hitMonsters.length) {
             console.warn("HIT", this, hitMonsters);
-            this.game.collision(this, hitMonsters);
+            this.game.collision({ shot: this, monsters: hitMonsters });
         }
     };
 
