@@ -53,14 +53,18 @@
         this.$topLayer.on("click", _.bind(function (e) {
             var structure;
 
+            e.stopPropagation();
+
             this.clickedMonster = null;
             this.clickedHex = null;
 
-            // clicked on a monster
-            this.clickedMonster = _.find(this.monsters, _.method("collisionDetect", {
-                x: e.offsetX,
-                y: e.offsetY
-            }));
+            // clicked on a monster?
+            this.clickedMonster = _.find(this.monsters, function (monster) {
+                return monster.collisionDetect({
+                    x: e.offsetX,
+                    y: e.offsetY
+                });
+            });
 
             if (this.clickedMonster) {
                 this.$bottom.children(":not(.monster)").hide();
@@ -68,22 +72,28 @@
                 return;
             }
 
-            // clicked on a hex
+            // clicked on a hex?
             this.clickedHex = this.hexFromXY(e.offsetX, e.offsetY);
 
-            if (this.clickedHex.canBuild()) {
-                structure = new Structure({ game: this, hex: this.clickedHex });
-                this.structures.push(structure);
-                this.clickedHex.structure = structure;
-            }
+            if (this.clickedHex) {
+                if (this.clickedHex.canBuild()) {
+                    structure = new Structure({ game: this, hex: this.clickedHex });
+                    this.structures.push(structure);
+                    this.clickedHex.structure = structure;
+                }
 
-            if (this.clickedHex.structure) {
-                this.$bottom.children(":not(.structure)").hide();
-                this.$bottom.children(".structure").show();
-                return;
+                if (this.clickedHex.structure) {
+                    this.$bottom.children(":not(.structure)").hide();
+                    this.$bottom.children(".structure").show();
+                    return;
+                }
             }
 
             this.$bottom.children().hide();
+        }, this));
+
+        this.$document.on("click", _.bind(function (e) {
+            this.$topLayer.click();
         }, this));
 
         this.setupHexes();
@@ -178,19 +188,29 @@
         _.each(this.shots, _.method("update", this.layer[3]));
 
         if (this.clickedMonster) {
-            this.clickedMonster.highlight(this.layer[4]);
-            this.updateControls(this.clickedMonster);
-        }
+            if (this.clickedMonster.health > 0) {
+                this.clickedMonster.highlight(this.layer[4]);
+                this.updateControls(this.clickedMonster);
+            }
 
+            else {
+                this.$topLayer.click();
+            }
+        }
+/*
         if (this.hoveredHex
             && !_.find(this.monsters, { hex: this.hoveredHex })
             && !_.find(this.monsters, { targetHex: this.hoveredHex })) {
             this.hoveredHex.highlight(this.layer[4]);
         }
-
+*/
         if (this.clickedHex) {
-            this.clickedHex.path(this.layer[4]);
-            this.clickedHex.fill(this.layer[4], "green");
+            //this.clickedHex.path(this.layer[4]);
+            //this.clickedHex.fill(this.layer[4], "green");
+            if (this.clickedHex.structure) {
+                this.clickedHex.structure.range.draw(this.layer[4]);
+            }
+
             this.updateControls(this.clickedHex);
         }
 
@@ -211,6 +231,7 @@
         if (item instanceof Monster) {
             this.$bottom.children(".monster").find(".position-x").text(item.x.toFixed(2));
             this.$bottom.children(".monster").find(".position-y").text(item.y.toFixed(2));
+            this.$bottom.children(".monster").find(".health").text(item.health);
         }
 
         else if (item instanceof Hex && item.structure) {
@@ -252,6 +273,7 @@
 
                     else if (hex.x < hex.size || hex.x > this.width - hex.size || hex.y < hex.size || hex.y > this.height - hex.size) {
                         hex.color = "#00595e";
+                        hex.lineColor = "#00595e";
                         hex.isBorder = true;
                     }
 
@@ -308,7 +330,7 @@
         }
     };
 
-    Game.prototype.collision = function (obj) {
+    Game.prototype.processHit = function (obj) {
         var firstMonster = obj.monsters[0];
         var damage = obj.shot.damage;
 
@@ -387,7 +409,7 @@
     Circle.prototype = new Shape();
     Circle.prototype.defaults = _.extend({}, Circle.prototype.defaults, {
         radius: 7,
-        color: "#4c3"
+        color: "#00C90D"
     });
 
     Circle.prototype.path = function (context) {
@@ -415,7 +437,7 @@
             }
         }
 
-        dr = this.radius + obj.radius;
+        dr = this.radius + (obj.radius || 0);
 
         return dx < dr
             && dy < dr
@@ -660,41 +682,76 @@
             this.setHex(this.hex);
         }
 
+        this.range = new Circle({
+            x: this.x,
+            y: this.y,
+            radius: this.rangeRadius,
+            color: "rgba(0,0,0,0.3)"
+        });
+
         return this;
     };
 
     Structure.prototype = new Circle();
     Structure.prototype.defaults = {
-        radius: 12,
-        color: "#FC8",
-        rate: 60
+        radius: 10,
+        rangeRadius: 40,
+        color: "#C55900",
+        cooldownFrames: 80,
+        cooldownCount: 1
     };
 
     Structure.prototype.update = function (context) {
         this.draw(context);
 
-        if (this.game.frameCount % this.rate === 0) {
+        if (this.cooldownCount > 0) {
+            this.cooldownCount -= 1;
+        }
+
+        this.target = _.find(this.game.monsters, _.bind(function (monster) {
+            return monster.collisionDetect(this.range);
+        }, this));
+
+        if (this.target && !this.cooldownCount) {
             this.game.shots.push(this.shoot());
+            this.cooldownCount = this.cooldownFrames;
         }
     };
 
     Structure.prototype.shoot = function () {
-        return new Shot({ x: this.x, y: this.y, game: this.game });
+        return new Shot({ x: this.x, y: this.y, game: this.game, target: this.target });
     };
 
     function Shot(init) {
+        var dx, dy;
+
         _.extend(this, this.defaults, init);
+
+        if (this.angle) {
+            // calculate vx/vy based on angle
+        }
+
+        else if (this.target) {
+            // calculate vx/vy based on position of target and shot
+            dx = Math.abs(this.x - this.target.x);
+            dy = Math.abs(this.y - this.target.y);
+
+            this.vy = this.v / (1 + dx / dy);
+            this.vx = this.vy * dx / dy;
+
+            this.vy *= (this.y < this.target.y ? 1 : -1);
+            this.vx *= (this.x < this.target.x ? 1 : -1);
+        }
 
         return this;
     };
 
     Shot.prototype = new Circle();
     Shot.prototype.defaults = {
-        radius: 3,
-        color: "#222",
-        vx: 2,
-        vy: 1,
-        damage: 2
+        radius: 1.25,
+        color: "hsla(183, 100%, 9%, 1)",
+        damage: 1,
+        v: 3
     };
 
     Shot.prototype.update = function (context) {
@@ -710,7 +767,7 @@
 
         if (hitMonsters.length) {
             console.warn("HIT", this, hitMonsters);
-            this.game.collision({ shot: this, monsters: hitMonsters });
+            this.game.processHit({ shot: this, monsters: hitMonsters });
         }
     };
 
