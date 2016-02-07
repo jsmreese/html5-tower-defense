@@ -6,7 +6,7 @@
 
     function Game(init) {
         _.extend(this, this.defaults, init);
-        _.bindAll(this, "play", "pause", "debug", "render");
+        _.bindAll(this, "play", "pause", "debug", "render", "setupContext");
 
         this.$document = $(document);
         this.$layers = this.$document.find("canvas");
@@ -34,7 +34,7 @@
 
         this.$topLayer = this.$layers.last();
 
-        this.$layers.each(_.bind(this.setupContext, this));
+        this.$layers.each(this.setupContext);
 
         this.$topLayer.on("mousemove", _.bind(_.throttle(function (e) {
             var hex = this.hexFromXY(e.offsetX, e.offsetY);
@@ -166,7 +166,7 @@
     Game.prototype.setupContext = function (index, elem) {
         elem.width = this.width;
         elem.height = this.height;
-        this.layer[index] = elem.getContext("2d");
+        this.layer[$(elem).data("layer")] = elem.getContext("2d");
     };
 
     Game.prototype.clearContext = function (context) {
@@ -174,8 +174,11 @@
     };
 
     Game.prototype.render = function () {
-        this.clearContext(this.layer[3]);
-        this.clearContext(this.layer[4]);
+        this.clearContext(this.layer.structures);
+        this.clearContext(this.layer.monsters);
+        this.clearContext(this.layer.shots);
+        this.clearContext(this.layer.highlights);
+        this.clearContext(this.layer.ranges);
 
         if (this.frameCount % 500 === 0) {
             this.monsters.push(new Monster({ hex: this.entranceHex }));
@@ -183,13 +186,13 @@
 
         this.exitHex.setRoute();
 
-        _.each(this.monsters, _.method("update", this.layer[3]));
-        _.each(this.hexes, _.method("update", this.layer[3]));
-        _.each(this.shots, _.method("update", this.layer[3]));
+        _.each(this.monsters, _.method("update", this.layer.monsters));
+        _.each(this.hexes, _.method("update", this.layer.structures));
+        _.each(this.shots, _.method("update", this.layer.shots));
 
         if (this.clickedMonster) {
             if (this.clickedMonster.health > 0) {
-                this.clickedMonster.highlight(this.layer[4]);
+                this.clickedMonster.highlight(this.layer.highlights);
                 this.updateControls(this.clickedMonster);
             }
 
@@ -208,7 +211,7 @@
             //this.clickedHex.path(this.layer[4]);
             //this.clickedHex.fill(this.layer[4], "green");
             if (this.clickedHex.structure) {
-                this.clickedHex.structure.range.draw(this.layer[4]);
+                this.clickedHex.structure.range.draw(this.layer.ranges);
             }
 
             this.updateControls(this.clickedHex);
@@ -294,7 +297,7 @@
 
         // draw grid
         _.each(this.hexes, _.bind(function (hex, index) {
-            hex.draw(this.layer[0]);
+            hex.draw(this.layer.grid);
 
             // DEBUG
             //this.layer[0].strokeText(index, hex.x - 10, hex.y + 10);
@@ -408,8 +411,8 @@
 
     Circle.prototype = new Shape();
     Circle.prototype.defaults = _.extend({}, Circle.prototype.defaults, {
-        radius: 7,
-        color: "#00C90D"
+        radius: 1,
+        color: "#000"
     });
 
     Circle.prototype.path = function (context) {
@@ -470,7 +473,9 @@
     Monster.prototype = new Circle();
     Monster.prototype.defaults = {
         vh: 0.2,
-        health: 4
+        health: 4,
+        radius: 7,
+        color: "#00C90D"
     };
 
     Monster.prototype.move = function () {
@@ -642,8 +647,9 @@
 
         if (this.structure) {
             this.path(context);
-            context.fillStyle = "#ddd";
-            context.fill();
+
+            this.fill(context, "#46B2B2");
+            this.stroke(context, this.lineColor);
 
             this.structure.update(context);
         }
@@ -686,7 +692,7 @@
             x: this.x,
             y: this.y,
             radius: this.rangeRadius,
-            color: "rgba(0,0,0,0.3)"
+            color: "#000"
         });
 
         return this;
@@ -694,9 +700,10 @@
 
     Structure.prototype = new Circle();
     Structure.prototype.defaults = {
-        radius: 10,
+        radius: 8,
         rangeRadius: 40,
-        color: "#C55900",
+        color: "#FF7400",
+        lineColor: "#C55900",
         cooldownFrames: 80,
         cooldownCount: 1
     };

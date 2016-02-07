@@ -8,11 +8,15 @@ body {
     border-radius: 10px;
 }
 
-.game canvas:last-of-type {
+.game canvas[data-layer="highlights"] {
     opacity: 0.4;
 }
 
-.game canvas:first-of-type {
+.game canvas[data-layer="ranges"] {
+    opacity: 0.2;
+}
+
+.game canvas[data-layer="grid"] {
     background-color: #fff;
 }
 
