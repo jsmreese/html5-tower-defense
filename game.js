@@ -700,7 +700,8 @@
 
     Structure.prototype = new Circle();
     Structure.prototype.defaults = {
-        radius: 8,
+        radius: 7,
+        barrelRadius: 10,
         rangeRadius: 40,
         color: "#FF7400",
         lineColor: "#C55900",
@@ -709,8 +710,6 @@
     };
 
     Structure.prototype.update = function (context) {
-        this.draw(context);
-
         if (this.cooldownCount > 0) {
             this.cooldownCount -= 1;
         }
@@ -719,10 +718,18 @@
             return monster.collisionDetect(this.range);
         }, this));
 
+        this.draw(context);
+
         if (this.target && !this.cooldownCount) {
             this.game.shots.push(this.shoot());
             this.cooldownCount = this.cooldownFrames;
         }
+    };
+
+    Structure.prototype.draw = function (context) {
+
+
+        this.prototype.prototype.draw(context);
     };
 
     Structure.prototype.shoot = function () {
