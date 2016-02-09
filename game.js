@@ -701,7 +701,7 @@
     Structure.prototype = new Circle();
     Structure.prototype.defaults = {
         radius: 7,
-        barrelRadius: 10,
+        barrelLength: 3,
         rangeRadius: 40,
         color: "#FF7400",
         lineColor: "#C55900",
@@ -727,7 +727,11 @@
     };
 
     Structure.prototype.draw = function (context) {
-
+        // Draw barrel. use setLineDash?
+        context.beginPath();
+        context.moveTo(this.x, this.y);
+        context.lineTo(this.routeHex.x, this.routeHex.y);
+        context.closePath();
 
         this.prototype.prototype.draw(context);
     };
