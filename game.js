@@ -701,22 +701,27 @@
     Structure.prototype = new Circle();
     Structure.prototype.defaults = {
         radius: 7,
-        barrelLength: 3,
+        barrelLength: 5,
         rangeRadius: 40,
         color: "#FF7400",
         lineColor: "#C55900",
         cooldownFrames: 80,
-        cooldownCount: 1
+        cooldownCount: 1, // begin firing one frame after building
+        targetVectorX: 1,
+        targetVectorY: 0,
+        shotRadius: 1.25
     };
 
     Structure.prototype.update = function (context) {
-        if (this.cooldownCount > 0) {
+        if (this.cooldownCount) {
             this.cooldownCount -= 1;
         }
 
         this.target = _.find(this.game.monsters, _.bind(function (monster) {
             return monster.collisionDetect(this.range);
         }, this));
+
+        this.setTargetVector();
 
         this.draw(context);
 
@@ -726,18 +731,45 @@
         }
     };
 
-    Structure.prototype.draw = function (context) {
-        // Draw barrel. use setLineDash?
+    // Unit vector pointing from Structure to its target.
+    Structure.prototype.setTargetVector = function () {
+        var dx, dy, dv, barrelLength;
+
+        if (this.target) {
+            dx = this.target.x - this.x;
+            dy = this.target.y - this.y;
+            dv = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+
+            this.targetVectorX = dx / dv;
+            this.targetVectorY = dy / dv;
+        }
+
+        barrelLength = this.radius + this.barrelLength;
+
+        this.barrelEndX = this.x + this.targetVectorX * barrelLength;
+        this.barrelEndY = this.y + this.targetVectorY * barrelLength;
+    };
+
+    Structure.prototype.drawBarrel = function (context) {
+        context.lineWidth = this.shotRadius * 2;
+
         context.beginPath();
         context.moveTo(this.x, this.y);
-        context.lineTo(this.routeHex.x, this.routeHex.y);
-        context.closePath();
+        context.lineTo(this.barrelEndX, this.barrelEndY);
+        context.strokeStyle = this.lineColor;
+        context.stroke();
 
-        this.prototype.prototype.draw(context);
+        context.lineWidth = 1;
+    };
+
+    Structure.prototype.draw = function (context) {
+        this.drawBarrel(context);
+
+        Circle.prototype.draw.call(this, context);
     };
 
     Structure.prototype.shoot = function () {
-        return new Shot({ x: this.x, y: this.y, game: this.game, target: this.target });
+        return new Shot({ x: this.barrelEndX, y: this.barrelEndY, game: this.game, target: this.target, radius: this.shotRadius });
     };
 
     function Shot(init) {
@@ -766,7 +798,7 @@
 
     Shot.prototype = new Circle();
     Shot.prototype.defaults = {
-        radius: 1.25,
+        radius: 1,
         color: "hsla(183, 100%, 9%, 1)",
         damage: 1,
         v: 3
