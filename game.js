@@ -404,6 +404,61 @@
         this.fill(context, "#fff");
     };
 
+    Shape.prototype.setUnitVector = function (propName, target) {
+        var dx, dy, dv;
+
+        if (target && target.x != null && target.y != null) {
+            dx = target.x - this.x;
+            dy = target.y - this.y;
+            dv = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+
+            this[propName + "X"] = dx / dv;
+            this[propName + "Y"] = dy / dv;
+        }
+    };
+
+    Shape.prototype.isOnScreen = function (game) {
+        var hexSize = game.hexes[0].size;
+        var width = game.width;
+        var height = game.height;
+
+        return this.x > 0 - hexSize
+            && this.x < width + hexSize
+            && this.y > 0 - hexSize
+            && this.y < height + hexSize;
+    };
+
+    function Line(init) {
+        _.extend(this, this.defaults, init);
+
+        this.setEndPoint();
+
+        return this;
+    }
+
+    Line.prototype = new Shape();
+    Line.prototype.defaults = _.extend({}, Line.prototype.defaults, {
+        size: 2,
+        lineColor: "#000",
+        vectorX: 1,
+        vectorY, 0
+    });
+
+    Line.prototype.fill = function () {
+        // Fill for a line has no meaning.
+    };
+
+    Line.prototype.path = function (context) {
+        context.beginPath();
+        context.moveTo(this.x, this.y);
+        context.lineTo(this.endX, this.endY);
+    };
+
+    Line.prototype.setEndPoint = function () {
+        this.endX = this.x + this.vectorX * this.size;
+        this.endY = this.y + this.vectorY * this.size;
+    };
+
     function Circle(init) {
         _.extend(this, this.defaults, init);
         return this;
@@ -429,35 +484,19 @@
             return;
         }
 
+        if (obj.endX != null && obj.endY != null) {
+            return this.collisionDetect({ x: obj.x, y: obj.y }) ||
+                this.collisionDetect({ x: obj.endX, y: obj.endY });
+        }
+
         dx = Math.abs(obj.x - this.x);
         dy = Math.abs(obj.y - this.y);
-
-        if (obj.endX && obj.endY && obj.angle && obj.length) {
-            dr = this.radius + obj.length;
-
-            if (dx < dr || dy < dr) {
-                return this.collisionDetectInterpolate(obj);
-            }
-        }
 
         dr = this.radius + (obj.radius || 0);
 
         return dx < dr
             && dy < dr
             && Math.pow(dx, 2) + Math.pow(dy, 2) < Math.pow(dr, 2);
-    };
-
-    Circle.prototype.collisionDetectInterpolate = function (obj) {
-        // Interpolate points along line based on line length
-        // and circle's radius. Collision detect against those points.
-        var steps = 1 + Math.ceil(4 * obj.length / this.radius);
-
-        return _.some(_.map(_.range(steps + 1), _.bind(function (step) {
-            return this.collisionDetect({
-                x: obj.x + (obj.endX - obj.x) * step / steps,
-                y: obj.y + (obj.endY - obj.y) * step / steps
-            });
-        }, this)));
     };
 
     function Monster(init) {
@@ -684,6 +723,8 @@
     function Structure(init) {
         _.extend(this, this.defaults, init);
 
+        this.shotType = ShotCircle;
+
         if (this.hex) {
             this.setHex(this.hex);
         }
@@ -704,7 +745,7 @@
         barrelLength: 5,
         rangeRadius: 40,
         color: "#FF7400",
-        lineColor: "#C55900",
+        lineColor: "#9B4600",
         cooldownFrames: 80,
         cooldownCount: 1, // begin firing one frame after building
         targetVectorX: 1,
@@ -733,16 +774,9 @@
 
     // Unit vector pointing from Structure to its target.
     Structure.prototype.setTargetVector = function () {
-        var dx, dy, dv, barrelLength;
+        var barrelLength;
 
-        if (this.target) {
-            dx = this.target.x - this.x;
-            dy = this.target.y - this.y;
-            dv = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-
-            this.targetVectorX = dx / dv;
-            this.targetVectorY = dy / dv;
-        }
+        this.setUnitVector("targetVector", this.target);
 
         barrelLength = this.radius + this.barrelLength;
 
@@ -769,43 +803,31 @@
     };
 
     Structure.prototype.shoot = function () {
-        return new Shot({ x: this.barrelEndX, y: this.barrelEndY, game: this.game, target: this.target, radius: this.shotRadius });
+        return new this.shotType({
+            x: this.barrelEndX,
+            y: this.barrelEndY,
+            initialTargetVectorX: this.targetVectorX,
+            initialTargetVectorY: this.targetVectorY,
+            game: this.game,
+            target: this.target,
+            radius: this.shotRadius
+        });
     };
 
-    function Shot(init) {
-        var dx, dy;
+    // Shot mixin object used for fake multiple inheritance
+    var Shot = {};
 
-        _.extend(this, this.defaults, init);
-
-        if (this.angle) {
-            // calculate vx/vy based on angle
+    Shot.setInitialVelocity = function () {
+        if (this.initialTargetVectorX != null && this.initialTargetVectorY != null) {
+            this.vx = this.v * this.initialTargetVectorX;
+            this.vy = this.v * this.initialTargetVectorY;
         }
+    }
 
-        else if (this.target) {
-            // calculate vx/vy based on position of target and shot
-            dx = Math.abs(this.x - this.target.x);
-            dy = Math.abs(this.y - this.target.y);
-
-            this.vy = this.v / (1 + dx / dy);
-            this.vx = this.vy * dx / dy;
-
-            this.vy *= (this.y < this.target.y ? 1 : -1);
-            this.vx *= (this.x < this.target.x ? 1 : -1);
-        }
-
-        return this;
-    };
-
-    Shot.prototype = new Circle();
-    Shot.prototype.defaults = {
-        radius: 1,
-        color: "hsla(183, 100%, 9%, 1)",
-        damage: 1,
-        v: 3
-    };
-
-    Shot.prototype.update = function (context) {
+    Shot.update = function (context) {
         var hitMonsters;
+
+        this.setUnitVector("targetVector", this.target);
 
         this.move();
 
@@ -821,15 +843,38 @@
         }
     };
 
-    Shot.prototype.isOnScreen = function (game) {
-        var hexSize = game.hexes[0].size;
-        var width = game.width;
-        var height = game.height;
+    function ShotCircle(init) {
+        _.extend(this, this.defaults, init);
 
-        return this.x > 0 - hexSize
-            && this.x < width + hexSize
-            && this.y > 0 - hexSize
-            && this.y < height + hexSize;
+        this.setInitialVelocity();
+
+        return this;
+    };
+
+    ShotCircle.prototype = new Circle();
+    _.extend(ShotCircle.prototype, Shot);
+    ShotCircle.prototype.defaults = {
+        radius: 1,
+        color: "hsla(183, 100%, 9%, 1)",
+        damage: 1,
+        v: 2
+    };
+
+    function ShotLine(init) {
+        _.extend(this, this.defaults, init);
+
+        this.setInitialVelocity();
+
+        return this;
+    };
+
+    ShotLine.prototype = new Line();
+    _.extend(ShotLine.prototype, Shot);
+    ShotLine.prototype.defaults = {
+        size: 4,
+        color: "#1240AB",
+        damage: 1,
+        v: 2
     };
 
     // Export global instance.
