@@ -375,6 +375,10 @@
         if (!_.isFunction(this.vy)) {
             this.vy += _.result(this, "ay");
         }
+
+        if (_.isFunction(this.setEndPoint)) {
+            this.setEndPoint();
+        }
     }
 
     Shape.prototype.fill = function (context, style) {
@@ -438,10 +442,10 @@
 
     Line.prototype = new Shape();
     Line.prototype.defaults = _.extend({}, Line.prototype.defaults, {
-        size: 2,
+        size: 4,
         lineColor: "#000",
         vectorX: 1,
-        vectorY, 0
+        vectorY: 0
     });
 
     Line.prototype.fill = function () {
@@ -723,7 +727,7 @@
     function Structure(init) {
         _.extend(this, this.defaults, init);
 
-        this.shotType = ShotCircle;
+        this.shotType = ShotLine;
 
         if (this.hex) {
             this.setHex(this.hex);
@@ -806,8 +810,8 @@
         return new this.shotType({
             x: this.barrelEndX,
             y: this.barrelEndY,
-            initialTargetVectorX: this.targetVectorX,
-            initialTargetVectorY: this.targetVectorY,
+            vectorX: this.targetVectorX,
+            vectorY: this.targetVectorY,
             game: this.game,
             target: this.target,
             radius: this.shotRadius
@@ -817,10 +821,10 @@
     // Shot mixin object used for fake multiple inheritance
     var Shot = {};
 
-    Shot.setInitialVelocity = function () {
-        if (this.initialTargetVectorX != null && this.initialTargetVectorY != null) {
-            this.vx = this.v * this.initialTargetVectorX;
-            this.vy = this.v * this.initialTargetVectorY;
+    Shot.setVelocity = function () {
+        if (this.vectorX != null && this.vectorY != null) {
+            this.vx = this.v * this.vectorX;
+            this.vy = this.v * this.vectorY;
         }
     }
 
@@ -846,7 +850,7 @@
     function ShotCircle(init) {
         _.extend(this, this.defaults, init);
 
-        this.setInitialVelocity();
+        this.setVelocity();
 
         return this;
     };
@@ -863,7 +867,7 @@
     function ShotLine(init) {
         _.extend(this, this.defaults, init);
 
-        this.setInitialVelocity();
+        this.setVelocity();
 
         return this;
     };
@@ -872,9 +876,9 @@
     _.extend(ShotLine.prototype, Shot);
     ShotLine.prototype.defaults = {
         size: 4,
-        color: "#1240AB",
+        color: "#1A60FF",
         damage: 1,
-        v: 2
+        v: 6
     };
 
     // Export global instance.
