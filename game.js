@@ -878,7 +878,7 @@
         size: 4,
         color: "#1A60FF",
         damage: 1,
-        v: 6
+        v: 3
     };
 
     // Export global instance.
