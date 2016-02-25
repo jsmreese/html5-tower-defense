@@ -1,4 +1,8 @@
 function createClass() {
+    function instanceOf(ctor) {
+        return this instanceof ctor || _.indexOf(this.constructors, ctor) > -1;
+    }
+
     var args, func, i;
 
     args = Array.prototype.slice.call(arguments);
@@ -9,21 +13,21 @@ function createClass() {
         var j;
 
         _.extend(this, init);
+        this.constructors = this.constructors || [];
 
-        for (j = 0; j < args.length; j += 1) {
-            args[j].call(this);
-        }
+        _.each(args, _.bind(function (arg) {
+            if (_.indexOf(this.constructors, arg) == -1) {
+                this.constructors.push(arg);
+                arg.call(this);
+            }
+        }, this));
 
         return this;
     };
 
-    func.prototype = {};
-
-    for (i = 0; i < args.length - 1; i += 1) {
-        _.extend(func.prototype, args[i].fn);
-    }
-
+    func.prototype = _.extend.apply(null, [{}].concat(_.map(args, "fn")));
     func.fn = func.prototype;
+    func.fn.instanceOf = instanceOf;
 
     return func;
 }
@@ -45,10 +49,10 @@ var Circle = createClass(Shape, function () {
 
 Circle.fn.radius = 2;
 
-var circ = new Circle({ radius: 1, x: 1, y: 2 })
-var circ2 = new Circle();
+//var circ = new Circle({ radius: 1, x: 1, y: 2 })
+//var circ2 = new Circle();
 
-var Stuff = createClass(function () {
+var Stuff = createClass(Shape, function () {
     this.stuff = "stuff";
     console.log("Stuff");
 });
@@ -58,34 +62,12 @@ Stuff.fn.x = 3;
 
 var StuffCircle = createClass(Circle, Stuff, function () {
     this.b = this.a + this.area;
+    console.log("StuffCircle");
 });
 
-function A() {
-    this.z = this.a + this.b;
+var st1 = new StuffCircle();
 
-    return this;
-}
-
-A.prototype = _.extend({}, {
-    a: 1,
-    b: 2
-});
-
-function B() {
-    A.call(this);
-
-    this.y = this.a + this.b + this.c;
-
-    return this;
-}
-
-B.prototype = _.extend({}, A.prototype, {
-    b: 3,
-    c: 4
-});
-
-
-
-var obj = new B();
-
-console.info(obj.a, obj.b, obj.c, obj.y, obj.z);
+console.log(st1.instanceOf(StuffCircle));
+console.log(st1.instanceOf(Circle));
+console.log(st1.instanceOf(Stuff));
+console.log(st1.instanceOf(Shape));
