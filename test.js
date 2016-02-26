@@ -1,35 +1,58 @@
-function createClass() {
-    function instanceOf(ctor) {
-        return this instanceof ctor || _.indexOf(this.constructors, ctor) > -1;
-    }
+/*
+    createClass([superClasses,] constructor)
+    Implements classes that allow multiple inheritance.
+    Reduces boilerplate of class definition.
 
-    var args, func, i;
+    * Automatically calls superClass constructor functions, merges
+    superClass prototype properties, and sets up `fn` prototype access.
+    * SuperClasses are applied in order, so a superClass appearing later
+    in the createClass arguments list will override the properties of a
+    previously applied superClass.
+    * Constructors do not need to call their superClass constructors.
+    * SuperClass constructors are called once per instance, so the class
+    constructor at the top of a diamond inheritance pattern will be called
+    only once.
+    * Use the instanceOf method to determine if an object is an instance
+    of a particular class or superClass. The instanceof operator will only
+    return true for the instantiated class, not for any superClasses.
+    * SuperClasses and constructor functions can appear in any order in
+    the arguments list passed to createClass. Multiple superClasses and/or
+    constructor functions may be specified.
+*/
+function instanceOf(constructor) {
+    return this instanceof constructor || _.indexOf(this.superConstructors, constructor) > -1;
+}
+
+function createClass() {
+    var args, constructor, i;
 
     args = Array.prototype.slice.call(arguments);
 
     if (!args.length) { return; }
 
-    func = function (init) {
+    constructor = function (init) {
         var j;
 
         _.extend(this, init);
-        this.constructors = this.constructors || [];
+        this.superConstructors = this.superConstructors || [];
 
         _.each(args, _.bind(function (arg) {
-            if (_.indexOf(this.constructors, arg) == -1) {
-                this.constructors.push(arg);
+            if (_.indexOf(this.superConstructors, arg) == -1) {
+                if (arg.fn && arg.fn.instanceOf) {
+                    // Push only superClass constructors defined with createClass.
+                    this.superConstructors.push(arg);
+                }
+
                 arg.call(this);
             }
         }, this));
-
-        return this;
     };
 
-    func.prototype = _.extend.apply(null, [{}].concat(_.map(args, "fn")));
-    func.fn = func.prototype;
-    func.fn.instanceOf = instanceOf;
+    constructor.prototype = _.extend.apply(null, [{}].concat(_.map(args, "fn")));
+    constructor.fn = constructor.prototype;
+    constructor.fn.instanceOf = instanceOf;
 
-    return func;
+    return constructor;
 }
 
 var Shape = createClass(function () {
@@ -71,3 +94,6 @@ console.log(st1.instanceOf(StuffCircle));
 console.log(st1.instanceOf(Circle));
 console.log(st1.instanceOf(Stuff));
 console.log(st1.instanceOf(Shape));
+
+var Circ = createClass(Circle);
+var circ3 = new Circ({ radius: 100, blah: "blah" });
