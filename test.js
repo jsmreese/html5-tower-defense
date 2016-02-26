@@ -95,5 +95,5 @@ console.log(st1.instanceOf(Circle));
 console.log(st1.instanceOf(Stuff));
 console.log(st1.instanceOf(Shape));
 
-var Circ = createClass(Circle);
+var Circ = createClass(Circle, Circle);
 var circ3 = new Circ({ radius: 100, blah: "blah" });
