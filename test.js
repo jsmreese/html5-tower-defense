@@ -19,41 +19,43 @@
     the arguments list passed to createClass. Multiple superClasses and/or
     constructor functions may be specified.
 */
-function instanceOf(constructor) {
-    return this instanceof constructor || _.indexOf(this.superConstructors, constructor) > -1;
-}
+var createClass = (function () {
+    function instanceOf(constructor) {
+        return this instanceof constructor || _.indexOf(this.superConstructors, constructor) > -1;
+    }
 
-function createClass() {
-    var args, constructor, i;
+    function createClass() {
+        var args, constructor;
 
-    args = Array.prototype.slice.call(arguments);
+        args = Array.prototype.slice.call(arguments);
 
-    if (!args.length) { return; }
+        constructor = function (init) {
+            var j;
 
-    constructor = function (init) {
-        var j;
+            _.extend(this, init);
+            this.superConstructors = this.superConstructors || [];
 
-        _.extend(this, init);
-        this.superConstructors = this.superConstructors || [];
+            _.each(args, _.bind(function (arg) {
+                if (_.indexOf(this.superConstructors, arg) == -1) {
+                    if (arg.fn && arg.fn.instanceOf) {
+                        // Push only superClass constructors defined with createClass.
+                        this.superConstructors.push(arg);
+                    }
 
-        _.each(args, _.bind(function (arg) {
-            if (_.indexOf(this.superConstructors, arg) == -1) {
-                if (arg.fn && arg.fn.instanceOf) {
-                    // Push only superClass constructors defined with createClass.
-                    this.superConstructors.push(arg);
+                    arg.call(this);
                 }
+            }, this));
+        };
 
-                arg.call(this);
-            }
-        }, this));
-    };
+        constructor.prototype = _.extend.apply(null, [{}].concat(_.map(args, "fn")));
+        constructor.fn = constructor.prototype;
+        constructor.fn.instanceOf = instanceOf;
 
-    constructor.prototype = _.extend.apply(null, [{}].concat(_.map(args, "fn")));
-    constructor.fn = constructor.prototype;
-    constructor.fn.instanceOf = instanceOf;
+        return constructor;
+    }
 
-    return constructor;
-}
+    return createClass;
+})();
 
 var Shape = createClass(function () {
     this.shape = "shape";
@@ -95,5 +97,7 @@ console.log(st1.instanceOf(Circle));
 console.log(st1.instanceOf(Stuff));
 console.log(st1.instanceOf(Shape));
 
-var Circ = createClass(Circle, Circle);
+var Init = createClass();
+Init.fn.ii = "Init";
+var Circ = createClass(Init, Circle);
 var circ3 = new Circ({ radius: 100, blah: "blah" });

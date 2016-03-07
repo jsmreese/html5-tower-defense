@@ -1,69 +1,11 @@
 // color scheme http://paletton.com/#uid=63j0u0kw0w0jyC+oRxVy4oIDfjr
 
-//(function (window) {
-    /*
-        createClass([superClasses,] constructor)
-        Implements classes that allow multiple inheritance.
-        Reduces boilerplate of class definition.
-
-        * Automatically calls superClass constructor functions, merges
-        superClass prototype properties, and sets up `fn` prototype access.
-        * SuperClasses are applied in order, so a superClass appearing later
-        in the createClass arguments list will override the properties of a
-        previously applied superClass.
-        * Constructors do not need to call their superClass constructors.
-        * SuperClass constructors are called once per instance, so the class
-        constructor at the top of a diamond inheritance pattern will be called
-        only once.
-        * Use the instanceOf method to determine if an object is an instance
-        of a particular class or superClass. The instanceof operator will only
-        return true for the instantiated class, not for any superClasses.
-        * SuperClasses and constructor functions can appear in any order in
-        the arguments list passed to createClass. Multiple superClasses and/or
-        constructor functions may be specified.
-    */
-    var createClass = (function () {
-        function instanceOf(constructor) {
-            return this instanceof constructor || _.indexOf(this.superConstructors, constructor) > -1;
-        }
-
-        function createClass() {
-            var args, constructor;
-
-            args = Array.prototype.slice.call(arguments);
-
-            constructor = function (init) {
-                var j;
-
-                _.extend(this, init);
-                this.superConstructors = this.superConstructors || [];
-
-                _.each(args, _.bind(function (arg) {
-                    if (_.indexOf(this.superConstructors, arg) == -1) {
-                        if (arg.fn && arg.fn.instanceOf) {
-                            // Push only superClass constructors defined with createClass.
-                            this.superConstructors.push(arg);
-                        }
-
-                        arg.call(this);
-                    }
-                }, this));
-            };
-
-            constructor.prototype = _.extend.apply(null, [{}].concat(_.map(args, "fn")));
-            constructor.fn = constructor.prototype;
-            constructor.fn.instanceOf = instanceOf;
-
-            return constructor;
-        }
-
-        return createClass;
-    })();
-
+(function (window) {
     var $ = window.jQuery;
     var _ = window._;
 
-    var Game = createClass(function () {
+    function Game(init) {
+        _.extend(this, this.defaults, init);
         _.bindAll(this, "play", "pause", "debug", "render", "setupContext");
 
         this.$document = $(document);
@@ -155,9 +97,11 @@
         }, this));
 
         this.setupHexes();
-    });
 
-    Game.fn.exports = function () {
+        return this;
+    }
+
+    Game.prototype.exports = function () {
         return {
             play: this.play,
             pause: this.pause,
@@ -165,14 +109,14 @@
         };
     };
 
-    _.extend(Game.fn, {
+    Game.prototype.defaults = {
         height: 465,
         width: 652,
         frameCount: 0,
         isPaused: true
-    });
+    };
 
-    Game.fn.hexFromXY = function (x, y) {
+    Game.prototype.hexFromXY = function (x, y) {
         var ref, i, j, k;
 
         ref = this.hexes[0];
@@ -184,7 +128,7 @@
         return _.find(this.hexes, this.roundIJK(i, j, k));
     };
 
-    Game.fn.roundIJK = function (i, j, k) {
+    Game.prototype.roundIJK = function (i, j, k) {
         var ri, rj, rk, di, dj, dk;
 
         ri = Math.round(i);
@@ -210,26 +154,26 @@
         return { i: ri, j: rj, k: rk };
     };
 
-    Game.fn.play = function () {
+    Game.prototype.play = function () {
         this.isPaused = false;
         this.render();
     };
 
-    Game.fn.pause = function () {
+    Game.prototype.pause = function () {
         this.isPaused = true;
     };
 
-    Game.fn.setupContext = function (index, elem) {
+    Game.prototype.setupContext = function (index, elem) {
         elem.width = this.width;
         elem.height = this.height;
         this.layer[$(elem).data("layer")] = elem.getContext("2d");
     };
 
-    Game.fn.clearContext = function (context) {
+    Game.prototype.clearContext = function (context) {
         context.clearRect(0, 0, this.width, this.height);
     };
 
-    Game.fn.render = function () {
+    Game.prototype.render = function () {
         this.clearContext(this.layer.structures);
         this.clearContext(this.layer.monsters);
         this.clearContext(this.layer.shots);
@@ -286,7 +230,7 @@
         !this.isPaused && requestAnimationFrame(this.render);
     };
 
-    Game.fn.updateControls = function (item) {
+    Game.prototype.updateControls = function (item) {
         if (item instanceof Monster) {
             this.$bottom.children(".monster").find(".position-x").text(item.x.toFixed(2));
             this.$bottom.children(".monster").find(".position-y").text(item.y.toFixed(2));
@@ -302,7 +246,7 @@
         }
     };
 
-    Game.fn.setupHexes = function () {
+    Game.prototype.setupHexes = function () {
         _.each(this.range, _.bind(function (i) {
             _.each(this.range, _.bind(function (j) {
                 var hex = new Hex({ i: i, j: j, k: 0 - i - j, game: this });
@@ -360,7 +304,7 @@
         }, this));
     };
 
-    Game.fn.debug = function (i) {
+    Game.prototype.debug = function (i) {
         switch (i) {
             case 1:
                 _.each([106, 271, 317, 367, 208, 91, 300], _.bind(function (index) {
@@ -380,7 +324,7 @@
         }
     };
 
-    Game.fn.debugLog = function () {
+    Game.prototype.debugLog = function () {
         if (this.frameCount % 300 === 0) {
             console.info("frame", this.frameCount);
             console.log("monsters", this.monsters.length);
@@ -389,7 +333,7 @@
         }
     };
 
-    Game.fn.processHit = function (obj) {
+    Game.prototype.processHit = function (obj) {
         var firstMonster = obj.monsters[0];
         var damage = obj.shot.damage;
 
@@ -398,24 +342,28 @@
         this.shots = _.reject(this.shots, obj.shot);
     };
 
-    var Shape = createClass();
 
-    _.extend(Shape.fn, {
+    function Shape(init) {
+        _.extend(this, this.defaults, init);
+        return this;
+    }
+
+    Shape.prototype.defaults = {
         x: 0,
         vx: 0, // number or function
         ax: 0, // number or function
         y: 0,
         vy: 0, // number or function
         ay: 0 // number or function
-    });
+    };
 
-    Shape.fn.setHex = function (hex) {
+    Shape.prototype.setHex = function (hex) {
         this.hex = hex;
         this.x = hex.x;
         this.y = hex.y;
     };
 
-    Shape.fn.move = function () {
+    Shape.prototype.move = function () {
         this.x += _.result(this, "vx");
 
         if (!_.isFunction(this.vx)) {
@@ -433,17 +381,17 @@
         }
     }
 
-    Shape.fn.fill = function (context, style) {
+    Shape.prototype.fill = function (context, style) {
         context.fillStyle = style;
         context.fill();
     }
 
-    Shape.fn.stroke = function (context, style) {
+    Shape.prototype.stroke = function (context, style) {
         context.strokeStyle = style;
         context.stroke();
     }
 
-    Shape.fn.draw = function (context) {
+    Shape.prototype.draw = function (context) {
         this.path(context);
 
         if (this.color) {
@@ -455,12 +403,12 @@
         }
     };
 
-    Shape.fn.highlight = function (context) {
+    Shape.prototype.highlight = function (context) {
         this.path(context);
         this.fill(context, "#fff");
     };
 
-    Shape.fn.setUnitVector = function (propName, target) {
+    Shape.prototype.setUnitVector = function (propName, target) {
         var dx, dy, dv;
 
         if (target && target.x != null && target.y != null) {
@@ -473,7 +421,7 @@
         }
     };
 
-    Shape.fn.isOnScreen = function (game) {
+    Shape.prototype.isOnScreen = function (game) {
         var hexSize = game.hexes[0].size;
         var width = game.width;
         var height = game.height;
@@ -484,60 +432,55 @@
             && this.y < height + hexSize;
     };
 
-    Shape.fn.toXY = function (prop) {
-        if (prop) {
-            return {
-                x: this[prop + "X"],
-                y: this[prop + "Y"]
-            };
-        }
+    function Line(init) {
+        _.extend(this, this.defaults, init);
 
-        return {
-            x: this.x,
-            y: this.y
-        };
-    };
-
-    var Line = createClass(Shape, function () {
         this.setEndPoint();
-    });
 
-    _.extend(Line.fn, {
+        return this;
+    }
+
+    Line.prototype = new Shape();
+    Line.prototype.defaults = _.extend({}, Line.prototype.defaults, {
         size: 4,
         lineColor: "#000",
         vectorX: 1,
         vectorY: 0
     });
 
-    Line.fn.fill = function () {
+    Line.prototype.fill = function () {
         // Fill for a line has no meaning.
     };
 
-    Line.fn.path = function (context) {
+    Line.prototype.path = function (context) {
         context.beginPath();
         context.moveTo(this.x, this.y);
         context.lineTo(this.endX, this.endY);
     };
 
-    Line.fn.setEndPoint = function () {
+    Line.prototype.setEndPoint = function () {
         this.endX = this.x + this.vectorX * this.size;
         this.endY = this.y + this.vectorY * this.size;
     };
 
-    var Circle = createClass(Shape);
+    function Circle(init) {
+        _.extend(this, this.defaults, init);
+        return this;
+    };
 
-    _.extend(Circle.fn, {
+    Circle.prototype = new Shape();
+    Circle.prototype.defaults = _.extend({}, Circle.prototype.defaults, {
         radius: 1,
         color: "#000"
     });
 
-    Circle.fn.path = function (context) {
+    Circle.prototype.path = function (context) {
         context.beginPath();
         context.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
         context.closePath();
     };
 
-    Circle.fn.collisionDetect = function (obj) {
+    Circle.prototype.collisionDetect = function (obj) {
         var dx, dy, dr;
 
         // Early exit for null or undefined x and y.
@@ -545,11 +488,9 @@
             return;
         }
 
-        if (obj.instanceOf && obj.instanceOf(Line)) {
-            // Assume that all lines will be relatively short compared to
-            // circles. Run collision detection on beginning and end of lines.
-            return this.collisionDetect(obj.toXY()) ||
-                this.collisionDetect(obj.toXY("end"));
+        if (obj.endX != null && obj.endY != null) {
+            return this.collisionDetect({ x: obj.x, y: obj.y }) ||
+                this.collisionDetect({ x: obj.endX, y: obj.endY });
         }
 
         dx = Math.abs(obj.x - this.x);
@@ -562,20 +503,25 @@
             && Math.pow(dx, 2) + Math.pow(dy, 2) < Math.pow(dr, 2);
     };
 
-    var Monster = createClass(Circle, function () {
+    function Monster(init) {
+        _.extend(this, this.defaults, init);
+
         if (this.hex) {
             this.setHex(this.hex);
         }
-    });
 
-    _.extend(Monster.fn, {
+        return this;
+    };
+
+    Monster.prototype = new Circle();
+    Monster.prototype.defaults = {
         vh: 0.2,
         health: 4,
         radius: 7,
         color: "#00C90D"
-    });
+    };
 
-    Monster.fn.move = function () {
+    Monster.prototype.move = function () {
         if (this.targetHex) {
             this.stepsRemaining -= 1;
 
@@ -594,7 +540,7 @@
         }
     };
 
-    Monster.fn.setTargetHex = function (targetHex) {
+    Monster.prototype.setTargetHex = function (targetHex) {
         this.targetHex = targetHex || this.hex.routeHex;
 
         if (this.targetHex) {
@@ -603,7 +549,7 @@
         }
     };
 
-    Monster.fn.update = function (context) {
+    Monster.prototype.update = function (context) {
         this.move();
         this.draw(context);
 
@@ -622,7 +568,7 @@
         }
     }
 
-    Monster.fn.hasTempRoute = function () {
+    Monster.prototype.hasTempRoute = function () {
         var hasRoute = true;
 
         if (this.hex) {
@@ -638,15 +584,20 @@
         return hasRoute;
     };
 
-    var Hex = createClass(Shape, function () {
+    function Hex(init) {
+        _.extend(this, this.defaults, init);
+
         this.width = this.size * 2;
         this.height =  Math.sqrt(3) / 2 * this.width;
 
         this.x = this.game.width / 2 + 3 / 4 * this.width * this.i;
         this.y = this.game.height / 2 + 1 / 2 * this.height * (this.k - this.j);
-    });
 
-    _.extend(Hex.fn, {
+        return this;
+    };
+
+    Hex.prototype = new Shape();
+    Hex.prototype.defaults = _.extend({}, Hex.prototype.defaults, {
         i: 0,
         j: 0,
         k: 0,
@@ -654,7 +605,7 @@
         lineColor: "#017277"
     });
 
-    Hex.fn.path = function (context) {
+    Hex.prototype.path = function (context) {
         context.beginPath();
 
         var vertices = _.map([0, 1, 2, 3, 4, 5], this.vertex, this);
@@ -668,7 +619,7 @@
         context.closePath();
     };
 
-    Hex.fn.vertex = function (i) {
+    Hex.prototype.vertex = function (i) {
         var rad = Math.PI / 180 * 60 * i;
 
         return {
@@ -677,15 +628,15 @@
         };
     };
 
-    Hex.fn.clearRoute = function () {
+    Hex.prototype.clearRoute = function () {
         this.routeHex = null;
     };
 
-    Hex.fn.clearTempRoute = function () {
+    Hex.prototype.clearTempRoute = function () {
         this.tempRouteHex = null;
     };
 
-    Hex.fn.setRoute = function (skipHex) {
+    Hex.prototype.setRoute = function (skipHex) {
         var stepHexes = [this];
         var nextStepHexes;
 
@@ -724,7 +675,7 @@
         }
     };
 
-    Hex.fn.update = function (context) {
+    Hex.prototype.update = function (context) {
         if (this.game.debugRoute) {
             if (this.routeHex) {
                 context.beginPath();
@@ -747,7 +698,7 @@
         }
     };
 
-    Hex.fn.canBuild = function () {
+    Hex.prototype.canBuild = function () {
         if (this.isMiddle
         && !_.find(this.game.monsters, { hex: this })
         && !_.find(this.game.monsters, { targetHex: this })) {
@@ -762,7 +713,7 @@
         return false;
     };
 
-    Hex.fn.setupNeighbors = function (hexes) {
+    Hex.prototype.setupNeighbors = function (hexes) {
         this.neighbors = _.compact(_.reject([
             _.find(hexes, { i: this.i + 1, j: this.j - 1, k: this.k }),
             _.find(hexes, { i: this.i - 1, j: this.j + 1, k: this.k }),
@@ -773,56 +724,10 @@
         ], "isBorder"));
     };
 
-    var Shot = createClass(function () {
-        this.setVelocity();
-    });
+    function Structure(init) {
+        _.extend(this, this.defaults, init);
 
-    Shot.fn.setVelocity = function () {
-        if (this.vectorX != null && this.vectorY != null) {
-            this.vx = this.v * this.vectorX;
-            this.vy = this.v * this.vectorY;
-        }
-    }
-
-    Shot.fn.update = function (context) {
-        var hitMonsters;
-
-        this.setUnitVector("targetVector", this.target);
-
-        this.move();
-
-        this.draw(context);
-
-        hitMonsters = _.filter(this.game.monsters, _.bind(function (monster) {
-            return monster.collisionDetect(this);
-        }, this));
-
-        if (hitMonsters.length) {
-            console.warn("HIT", this, hitMonsters);
-            this.game.processHit({ shot: this, monsters: hitMonsters });
-        }
-    };
-
-    var ShotCircle = createClass(Shot, Circle);
-
-    _.extend(ShotCircle.fn, {
-        radius: 1.25,
-        color: "#888",
-        damage: 1,
-        v: 1
-    });
-
-    var ShotLine = createClass(Shot, Line);
-
-    _.extend(ShotLine.fn, {
-        size: 6,
-        lineColor: "#F82",
-        damage: 1,
-        v: 3
-    });
-
-    var Structure = createClass(Circle, function () {
-        this.shotType = ShotCircle;
+        this.shotType = ShotLine;
 
         if (this.hex) {
             this.setHex(this.hex);
@@ -834,12 +739,15 @@
             radius: this.rangeRadius,
             color: "#000"
         });
-    });
 
-    _.extend(Structure.fn, {
+        return this;
+    };
+
+    Structure.prototype = new Circle();
+    Structure.prototype.defaults = {
         radius: 7,
         barrelLength: 5,
-        rangeRadius: 80,
+        rangeRadius: 40,
         color: "#FF7400",
         lineColor: "#9B4600",
         cooldownFrames: 80,
@@ -847,9 +755,9 @@
         targetVectorX: 1,
         targetVectorY: 0,
         shotRadius: 1.25
-    });
+    };
 
-    Structure.fn.update = function (context) {
+    Structure.prototype.update = function (context) {
         if (this.cooldownCount) {
             this.cooldownCount -= 1;
         }
@@ -869,7 +777,7 @@
     };
 
     // Unit vector pointing from Structure to its target.
-    Structure.fn.setTargetVector = function () {
+    Structure.prototype.setTargetVector = function () {
         var barrelLength;
 
         this.setUnitVector("targetVector", this.target);
@@ -880,7 +788,7 @@
         this.barrelEndY = this.y + this.targetVectorY * barrelLength;
     };
 
-    Structure.fn.drawBarrel = function (context) {
+    Structure.prototype.drawBarrel = function (context) {
         context.lineWidth = this.shotRadius * 2;
 
         context.beginPath();
@@ -892,13 +800,13 @@
         context.lineWidth = 1;
     };
 
-    Structure.fn.draw = function (context) {
+    Structure.prototype.draw = function (context) {
         this.drawBarrel(context);
 
-        Circle.fn.draw.call(this, context);
+        Circle.prototype.draw.call(this, context);
     };
 
-    Structure.fn.shoot = function () {
+    Structure.prototype.shoot = function () {
         return new this.shotType({
             x: this.barrelEndX,
             y: this.barrelEndY,
@@ -910,6 +818,69 @@
         });
     };
 
-//    // Export global instance.
+    // Shot mixin object used for fake multiple inheritance
+    var Shot = {};
+
+    Shot.setVelocity = function () {
+        if (this.vectorX != null && this.vectorY != null) {
+            this.vx = this.v * this.vectorX;
+            this.vy = this.v * this.vectorY;
+        }
+    }
+
+    Shot.update = function (context) {
+        var hitMonsters;
+
+        this.setUnitVector("targetVector", this.target);
+
+        this.move();
+
+        this.draw(context);
+
+        hitMonsters = _.filter(this.game.monsters, _.bind(function (monster) {
+            return monster.collisionDetect(this);
+        }, this));
+
+        if (hitMonsters.length) {
+            console.warn("HIT", this, hitMonsters);
+            this.game.processHit({ shot: this, monsters: hitMonsters });
+        }
+    };
+
+    function ShotCircle(init) {
+        _.extend(this, this.defaults, init);
+
+        this.setVelocity();
+
+        return this;
+    };
+
+    ShotCircle.prototype = new Circle();
+    _.extend(ShotCircle.prototype, Shot);
+    ShotCircle.prototype.defaults = {
+        radius: 1,
+        color: "hsla(183, 100%, 9%, 1)",
+        damage: 1,
+        v: 2
+    };
+
+    function ShotLine(init) {
+        _.extend(this, this.defaults, init);
+
+        this.setVelocity();
+
+        return this;	
+    };
+
+    ShotLine.prototype = new Line();
+    _.extend(ShotLine.prototype, Shot);
+    ShotLine.prototype.defaults = {
+        size: 4,
+        color: "#1A60FF",
+        damage: 1,
+        v: 3
+    };
+
+    // Export global instance.
     window.game = new Game().exports();
-//})(this);
+})(this);
