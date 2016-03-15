@@ -569,7 +569,7 @@
     });
 
     _.extend(Monster.fn, {
-        vh: 0.2,
+        vh: 0.5,
         health: 4,
         radius: 7,
         color: "#00C90D"
@@ -779,6 +779,10 @@
 
     Shot.fn.setVelocity = function () {
         if (this.vectorX != null && this.vectorY != null) {
+            if (this.a) {
+                this.v += this.a;
+            }
+
             this.vx = this.v * this.vectorX;
             this.vy = this.v * this.vectorY;
         }
@@ -800,7 +804,16 @@
         if (hitMonsters.length) {
             console.warn("HIT", this, hitMonsters);
             this.game.processHit({ shot: this, monsters: hitMonsters });
+            return;
         }
+
+        // Nothing hit in this frame.
+        if (this.tracking && this.target && this.target.hex) {
+            this.vectorX = this.targetVectorX;
+            this.vectorY = this.targetVectorY;
+        }
+
+        this.setVelocity();
     };
 
     var ShotCircle = createClass(Shot, Circle);
@@ -809,7 +822,9 @@
         radius: 1.25,
         color: "#888",
         damage: 1,
-        v: 1
+        v: 0.5,
+        a: 0.05,
+        tracking: true
     });
 
     var ShotLine = createClass(Shot, Line);
@@ -846,7 +861,7 @@
         cooldownCount: 1, // begin firing one frame after building
         targetVectorX: 1,
         targetVectorY: 0,
-        shotRadius: 1.25
+        shotRadius: 1.5
     });
 
     Structure.fn.update = function (context) {
@@ -870,9 +885,12 @@
 
     // Unit vector pointing from Structure to its target.
     Structure.fn.setTargetVector = function () {
-        var barrelLength;
-
         this.setUnitVector("targetVector", this.target);
+        this.setBarrelPosition();
+    };
+
+    Structure.fn.setBarrelPosition = function () {
+        var barrelLength;
 
         barrelLength = this.radius + this.barrelLength;
 
