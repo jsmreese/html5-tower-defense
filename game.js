@@ -276,7 +276,7 @@
         // clean up dead or exited monsters
         this.monsters = _.filter(this.monsters, "hex");
 
-        // clean up off-screen shots
+        // clean up shots that were hits or went off-screen
         this.shots = _.filter(this.shots, _.method("isOnScreen", this));
 
         this.debugLog();
@@ -390,12 +390,14 @@
     };
 
     Game.fn.processHit = function (obj) {
-        var firstMonster = obj.monsters[0];
-        var damage = obj.shot.damage;
+        obj.shot.isDone = true;
 
-        firstMonster.health -= damage;
+        if (obj.shot.isArea) {
+            _.each(obj.monsters, _.method("processHit", obj.shot));
+            return;
+        }
 
-        this.shots = _.reject(this.shots, obj.shot);
+        obj.monsters[0].processHit(obj.shot);
     };
 
     var Shape = createClass();
@@ -478,7 +480,8 @@
         var width = game.width;
         var height = game.height;
 
-        return this.x > 0 - hexSize
+        return !this.isDone
+            && this.x > 0 - hexSize
             && this.x < width + hexSize
             && this.y > 0 - hexSize
             && this.y < height + hexSize;
@@ -608,11 +611,14 @@
         this.draw(context);
 
         if (this.health <= 0) {
+            // should be monster.die or something notifying game
+            // maybe use isDone = true to filter monsters for removal?
             this.hex = null;
         }
 
         if (this.hex) {
             if (this.hex.isExit) {
+                // should be monster.exit or something notifying game
                 this.hex = null;
             }
 
@@ -636,6 +642,10 @@
         }
 
         return hasRoute;
+    };
+
+    Monster.fn.processHit = function (shot) {
+        this.health -= shot.damage;
     };
 
     var Hex = createClass(Shape, function () {
@@ -808,7 +818,7 @@
         }
 
         // Nothing hit in this frame.
-        if (this.tracking && this.target && this.target.hex) {
+        if (this.isTracking && this.target && this.target.hex) {
             this.vectorX = this.targetVectorX;
             this.vectorY = this.targetVectorY;
         }
@@ -824,7 +834,7 @@
         damage: 1,
         v: 0.5,
         a: 0.05,
-        tracking: true
+        isTracking: true
     });
 
     var ShotLine = createClass(Shot, Line);
