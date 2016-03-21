@@ -1,6 +1,136 @@
 // color scheme http://paletton.com/#uid=63j0u0kw0w0jyC+oRxVy4oIDfjr
 
 //(function (window) {
+    var $ = window.jQuery;
+    var _ = window._;
+
+    var color = {
+        black: "#000",
+        background: "#FFF",
+        border: "#444",
+        grid: "#BBB",
+        lineDefault: "#666",
+        fillDefault: "#888",
+        wall: "#AAA",
+
+        monster: "#4B4"
+    };
+
+    /* Color utility functions */
+
+    // rgb2hex
+    // Converts an rgb array [r, g, b] to a hex color string "#rrggbb".
+    function rgb2hex(rgb) {
+        var r, g, b;
+
+        r = Math.round(rgb[0] * 255);
+        g = Math.round(rgb[1] * 255);
+        b = Math.round(rgb[2] * 255);
+
+        return "#" + (r < 16 ? "0" : "") + r.toString(16) +
+           (g < 16 ? "0" : "") + g.toString(16) +
+           (b < 16 ? "0" : "") + b.toString(16);
+    }
+
+    // hex2rbg
+    // Converts a hex color string "#rrggbb" or "#rgb" to an rgb array [r, g, b].
+    function hex2rgb(hex) {
+        if (hex.length == 7) {
+            return [parseInt("0x" + hex.substring(1, 3)) / 255,
+                parseInt("0x" + hex.substring(3, 5)) / 255,
+                parseInt("0x" + hex.substring(5, 7)) / 255];
+        }
+
+        if (hex.length == 4) {
+            return [parseInt("0x" + hex.substring(1, 2)) / 15,
+                parseInt("0x" + hex.substring(2, 3)) / 15,
+                parseInt("0x" + hex.substring(3, 4)) / 15];
+        }
+
+        throw "Invalid hex color value.";
+    }
+
+    // hsl2rgb
+    // Converts an hsl array [h, s, l] to an rgb array [r, g, b].
+    function hsl2rgb(hsl) {
+        var m1, m2, r, g, b, h, s, l;
+
+        h = hsl[0];
+        s = hsl[1];
+        l = hsl[2];
+
+        m2 = (l <= 0.5) ? l * (s + 1) : l + s - l * s;
+        m1 = l * 2 - m2;
+
+        return [
+            hue2rgb(m1, m2, h + 1 / 3),
+            hue2rgb(m1, m2, h),
+            hue2rgb(m1, m2, h - 1 / 3)
+        ];
+    }
+
+    // hue2rgb
+    // Converts a hue to an rgb array [r, g, b].
+    function hue2rgb(m1, m2, h) {
+        h = (h < 0) ? h + 1 : ((h > 1) ? h - 1 : h);
+        if (h * 6 < 1) { return m1 + (m2 - m1) * h * 6; }
+        if (h * 2 < 1) { return m2; }
+        if (h * 3 < 2) { return m1 + (m2 - m1) * (2 / 3 - h) * 6; }
+        return m1;
+    }
+
+    // rgb2hsl
+    // Converts an rgb array [r, g, b] to an hsl array [h, s, l].
+    function rgb2hsl(rgb) {
+        var min, max, delta, h, s, l, r, g, b;
+
+        r = rgb[0];
+        g = rgb[1];
+        b = rgb[2];
+
+        min = Math.min(r, Math.min(g, b));
+        max = Math.max(r, Math.max(g, b));
+        delta = max - min;
+
+        l = (min + max) / 2;
+        s = 0;
+
+        if (l > 0 && l < 1) {
+            s = delta / (l < 0.5 ? (2 * l) : (2 - 2 * l));
+        }
+
+        h = 0;
+
+        if (delta > 0) {
+            if (max == r && max != g) h += (g - b) / delta;
+            if (max == g && max != b) h += (2 + (b - r) / delta);
+            if (max == b && max != r) h += (4 + (r - g) / delta);
+            h /= 6;
+        }
+
+        return [h, s, l];
+    }
+
+    // hsl2hex
+    // Converts an hsl array [h, s, l] to a hex color value "#rrggbb".
+    function hsl2hex(hsl) {
+        return rgb2hex(hsl2rgb(hsl));
+    }
+
+    // hex2hsl
+    // Converts a hex color value "#rrggbb" or "#rgb" to an hsl array [h, s, l].
+    function hex2hsl(hex) {
+        return rgb2hsl(hex2rgb(hex));
+    }
+
+    // darken
+    // Darkens a hex color value by the provided factor (0 to 1).
+    // e.g. darken(hex, 0.1) will darken a color by reducing its l value by 10%.
+    function darken(hex, factor) {
+        var hsl = hex2hsl(hex);
+        return hsl2hex(hsl[0], hsl[1], hsl[2] * factor);
+    }
+
     /*
         createClass([superClasses,] constructor)
         Implements classes that allow multiple inheritance.
@@ -16,8 +146,9 @@
         constructor at the top of a diamond inheritance pattern will be called
         only once.
         * Use the instanceOf method to determine if an object is an instance
-        of a particular class or superClass. The instanceof operator will only
-        return true for the instantiated class, not for any superClasses.
+        of a particular class or superClass. The native JavaScript instanceof
+        operator will only return true for the instantiated class, not for any
+        superClasses.
         * SuperClasses and constructor functions can appear in any order in
         the arguments list passed to createClass. Multiple superClasses and/or
         constructor functions may be specified.
@@ -60,14 +191,14 @@
         return createClass;
     })();
 
-    var $ = window.jQuery;
-    var _ = window._;
-
     var Game = createClass(function () {
         _.bindAll(this, "play", "pause", "debug", "render", "setupContext");
 
         this.$document = $(document);
+
         this.$layers = this.$document.find("canvas");
+        this.$layers.css("border-color", color.border);
+
         this.$bottom = this.$document.find(".controls-bottom");
         this.$bottom.children().hide();
 
@@ -331,8 +462,8 @@
                     }
 
                     else if (hex.x < hex.size || hex.x > this.width - hex.size || hex.y < hex.size || hex.y > this.height - hex.size) {
-                        hex.color = "#00595e";
-                        hex.lineColor = "#00595e";
+                        hex.color = color.border;
+                        hex.lineColor = color.border;
                         hex.isBorder = true;
                     }
 
@@ -351,11 +482,15 @@
         // setup neighbors
         _.each(this.hexes, _.method("setupNeighbors", this.hexes));
 
+        // draw background
+        this.layer.grid.fillStyle = color.background;
+        this.layer.grid.fillRect(0, 0, this.width, this.height);
+
         // draw grid
         _.each(this.hexes, _.bind(function (hex, index) {
             hex.draw(this.layer.grid);
 
-            // DEBUG
+            // DEBUG hex indices
             //this.layer[0].strokeText(index, hex.x - 10, hex.y + 10);
         }, this));
     };
@@ -459,10 +594,10 @@
 
     Shape.fn.highlight = function (context) {
         this.path(context);
-        this.fill(context, "#fff");
+        this.fill(context, color.background);
     };
 
-    Shape.fn.setUnitVector = function (propName, target) {
+    Shape.fn.setUnitVector = function (prop, target) {
         var dx, dy, dv;
 
         if (target && target.x != null && target.y != null) {
@@ -470,8 +605,8 @@
             dy = target.y - this.y;
             dv = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
 
-            this[propName + "X"] = dx / dv;
-            this[propName + "Y"] = dy / dv;
+            this[prop + "X"] = dx / dv;
+            this[prop + "Y"] = dy / dv;
         }
     };
 
@@ -488,16 +623,9 @@
     };
 
     Shape.fn.toXY = function (prop) {
-        if (prop) {
-            return {
-                x: this[prop + "X"],
-                y: this[prop + "Y"]
-            };
-        }
-
         return {
-            x: this.x,
-            y: this.y
+            x: this[prop ? prop + "X" : "x"],
+            y: this[prop ? prop + "Y" : "y"]
         };
     };
 
@@ -507,7 +635,7 @@
 
     _.extend(Line.fn, {
         size: 4,
-        lineColor: "#000",
+        lineColor: color.lineDefault,
         vectorX: 1,
         vectorY: 0
     });
@@ -531,7 +659,7 @@
 
     _.extend(Circle.fn, {
         radius: 1,
-        color: "#000"
+        color: color.fillDefault
     });
 
     Circle.fn.path = function (context) {
@@ -575,7 +703,7 @@
         vh: 0.5,
         health: 4,
         radius: 7,
-        color: "#00C90D"
+        color: color.monster
     });
 
     Monster.fn.move = function () {
@@ -661,7 +789,7 @@
         j: 0,
         k: 0,
         size: 20,
-        lineColor: "#017277"
+        lineColor: color.grid
     });
 
     Hex.fn.path = function (context) {
@@ -735,6 +863,7 @@
     };
 
     Hex.fn.update = function (context) {
+        // DEBUG routes
         if (this.game.debugRoute) {
             if (this.routeHex) {
                 context.beginPath();
@@ -750,8 +879,8 @@
         if (this.structure) {
             this.path(context);
 
-            this.fill(context, "#46B2B2");
-            this.stroke(context, this.lineColor);
+            this.fill(context, color.wall);
+            this.stroke(context, color.wall);
 
             this.structure.update(context);
         }
@@ -830,7 +959,6 @@
 
     _.extend(ShotCircle.fn, {
         radius: 1.25,
-        color: "#888",
         damage: 1,
         v: 0.5,
         a: 0.05,
@@ -841,23 +969,22 @@
 
     _.extend(ShotLine.fn, {
         size: 6,
-        lineColor: "#F82",
         damage: 1,
         v: 3
     });
 
     var Structure = createClass(Circle, function () {
-        this.shotType = ShotCircle;
-
         if (this.hex) {
             this.setHex(this.hex);
         }
+
+        this.lineColor = darken(this.color, 0.1);
 
         this.range = new Circle({
             x: this.x,
             y: this.y,
             radius: this.rangeRadius,
-            color: "#000"
+            color: color.black
         });
     });
 
@@ -866,12 +993,12 @@
         barrelLength: 5,
         rangeRadius: 80,
         color: "#FF7400",
-        lineColor: "#9B4600",
         cooldownFrames: 80,
         cooldownCount: 1, // begin firing one frame after building
         targetVectorX: 1,
         targetVectorY: 0,
-        shotRadius: 1.5
+        shotRadius: 1.5,
+        shotType: ShotCircle
     });
 
     Structure.fn.update = function (context) {
