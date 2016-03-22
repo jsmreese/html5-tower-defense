@@ -125,10 +125,16 @@
 
     // darken
     // Darkens a hex color value by the provided factor (0 to 1).
-    // e.g. darken(hex, 0.1) will darken a color by reducing its l value by 10%.
+    // e.g. darken(hex, 0.2) will darken a color by reducing its l value by 20%.
+    // Default factor is 0.15.
     function darken(hex, factor) {
-        var hsl = hex2hsl(hex);
-        return hsl2hex(hsl[0], hsl[1], hsl[2] * factor);
+        var hsl, l;
+
+        factor = factor != null ? factor : 0.15;
+        hsl = hex2hsl(hex);
+        l = Math.max(hsl[2] - factor, 0);
+
+        return hsl2hex([hsl[0], hsl[1], l]);
     }
 
     /*
@@ -361,6 +367,8 @@
     };
 
     Game.fn.render = function () {
+        var now;
+
         this.clearContext(this.layer.structures);
         this.clearContext(this.layer.monsters);
         this.clearContext(this.layer.shots);
@@ -411,6 +419,14 @@
         this.shots = _.filter(this.shots, _.method("isOnScreen", this));
 
         this.debugLog();
+
+        if (this.frameCount % 60 === 0) {
+            now = Date.now();
+
+            console.info("Tick", this.frameCount / 60, 60 / (now - this.lastTickTime) * 1000);
+
+            this.lastTickTime = now;
+        }
 
         this.frameCount += 1;
 
@@ -978,7 +994,7 @@
             this.setHex(this.hex);
         }
 
-        this.lineColor = darken(this.color, 0.1);
+        this.lineColor = darken(this.color);
 
         this.range = new Circle({
             x: this.x,
@@ -989,15 +1005,15 @@
     });
 
     _.extend(Structure.fn, {
-        radius: 7,
-        barrelLength: 5,
+        radius: 6.5, // 7.5
+        barrelLength: 6, // 5
         rangeRadius: 80,
         color: "#FF7400",
         cooldownFrames: 80,
         cooldownCount: 1, // begin firing one frame after building
         targetVectorX: 1,
         targetVectorY: 0,
-        shotRadius: 1.5,
+        shotRadius: 1.25, // 2.5
         shotType: ShotCircle
     });
 
