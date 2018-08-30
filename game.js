@@ -279,13 +279,27 @@
 
             if (this.clickedHex) {
                 if (this.clickedHex.canBuild()) {
+                    
+                    var structureType;
+                    switch (this.clickCount % 4) {
+                        case 0:
+                        structureType = LightCannon;
+                        break;
 
-                    if (this.clickCount % 2) {
-                        structure = new LightCannon({ game: this, hex: this.clickedHex });
-                    } else {
-                        structure = new HeavyCannon({ game: this, hex: this.clickedHex });
+                        case 1:
+                        structureType = HeavyCannon;
+                        break;
+
+                        case 2:
+                        structureType = LightPulseCannon;
+                        break;
+
+                        case 3:
+                        structureType = HeavyPulseCannon;
+                        break;
                     }
 
+                    structure = new structureType({ game: this, hex: this.clickedHex });
                     this.structures.push(structure);
                     this.clickedHex.structure = structure;
                 }
@@ -921,6 +935,7 @@
 
     Hex.fn.canBuild = function () {
         if (this.isMiddle
+        && !this.structure
         && !_.find(this.game.monsters, { hex: this })
         && !_.find(this.game.monsters, { targetHex: this })) {
             this.game.exitHex.setRoute(this);
@@ -1098,6 +1113,7 @@
             game: this.game,
             target: this.target,
             radius: this.shotRadius,
+            size: this.shotSize,
             v: this.shotV
         });
     };
@@ -1108,7 +1124,7 @@
         radius: 6,
         barrelLength: 7,
         rangeRadius: 100,
-        color: "#12AB40",
+        color: "#40AB12",
         cooldownFrames: 72,
         shotRadius: 1.5,
         shotV: 2.5,
@@ -1128,6 +1144,31 @@
         shotType: ShotCircle
     });
 
+    var LightPulseCannon = createClass(Structure);
+
+    _.extend(LightPulseCannon.fn, {
+        radius: 3,
+        barrelLength: 8,
+        rangeRadius: 180,
+        color: "#8024DE",
+        cooldownFrames: 108,
+        shotSize: 5,
+        shotV: 3,
+        shotType: ShotLine
+    });
+
+    var HeavyPulseCannon = createClass(Structure);
+
+    _.extend(HeavyPulseCannon.fn, {
+        radius: 6,
+        barrelLength: 5,
+        rangeRadius: 150,
+        color: "#DE8024",
+        cooldownFrames: 144,
+        shotSize: 6,
+        shotV: 2.5,
+        shotType: ShotLine
+    });
 //    // Export global instance.
     window.game = new Game().exports();
 //})(this);
