@@ -11,7 +11,7 @@
         grid: "#BBB",
         lineDefault: "#666",
         fillDefault: "#888",
-        wall: "#AAA",
+        wall: "#CCC",
 
         monster: "#4B4"
     };
@@ -270,9 +270,22 @@
             // clicked on a hex?
             this.clickedHex = this.hexFromXY(e.offsetX, e.offsetY);
 
+            if (this.clickCount) {
+                this.clickCount = this.clickCount + 1;
+            } else {
+                this.clickCount = 1;
+            }
+
+
             if (this.clickedHex) {
                 if (this.clickedHex.canBuild()) {
-                    structure = new Structure({ game: this, hex: this.clickedHex });
+
+                    if (this.clickCount % 2) {
+                        structure = new LightCannon({ game: this, hex: this.clickedHex });
+                    } else {
+                        structure = new HeavyCannon({ game: this, hex: this.clickedHex });
+                    }
+
                     this.structures.push(structure);
                     this.clickedHex.structure = structure;
                 }
@@ -293,6 +306,8 @@
 
         this.setupHexes();
     });
+
+    Game.fn.debugRoute = true;
 
     Game.fn.exports = function () {
         return {
@@ -430,7 +445,9 @@
 
         this.frameCount += 1;
 
-        !this.isPaused && requestAnimationFrame(this.render);
+        if (!this.isPaused) {
+            return requestAnimationFrame(this.render);
+        }
     };
 
     Game.fn.updateControls = function (item) {
@@ -976,9 +993,9 @@
     _.extend(ShotCircle.fn, {
         radius: 1.25,
         damage: 1,
-        v: 0.5,
-        a: 0.05,
-        isTracking: true
+        v: 0.8,
+        a: 0,
+        isTracking: false
     });
 
     var ShotLine = createClass(Shot, Line);
@@ -1006,15 +1023,9 @@
 
     _.extend(Structure.fn, {
         radius: 6.5, // 7.5
-        barrelLength: 6, // 5
-        rangeRadius: 80,
-        color: "#FF7400",
-        cooldownFrames: 80,
         cooldownCount: 1, // begin firing one frame after building
         targetVectorX: 1,
-        targetVectorY: 0,
-        shotRadius: 1.25, // 2.5
-        shotType: ShotCircle
+        targetVectorY: 0
     });
 
     Structure.fn.update = function (context) {
@@ -1031,7 +1042,12 @@
         this.draw(context);
 
         if (this.target && !this.cooldownCount) {
-            this.game.shots.push(this.shoot());
+            var shot = this.shoot();
+
+            if (shot) {
+                this.game.shots.push(shot);
+            }
+
             this.cooldownCount = this.cooldownFrames;
         }
     };
@@ -1045,10 +1061,12 @@
     Structure.fn.setBarrelPosition = function () {
         var barrelLength;
 
-        barrelLength = this.radius + this.barrelLength;
+        if (this.barrelLength) {
+            barrelLength = this.radius + this.barrelLength;
 
-        this.barrelEndX = this.x + this.targetVectorX * barrelLength;
-        this.barrelEndY = this.y + this.targetVectorY * barrelLength;
+            this.barrelEndX = this.x + this.targetVectorX * barrelLength;
+            this.barrelEndY = this.y + this.targetVectorY * barrelLength;
+        }
     };
 
     Structure.fn.drawBarrel = function (context) {
@@ -1064,22 +1082,51 @@
     };
 
     Structure.fn.draw = function (context) {
-        this.drawBarrel(context);
+        if (this.barrelLength) {
+            this.drawBarrel(context);
+        }
 
         Circle.fn.draw.call(this, context);
     };
 
     Structure.fn.shoot = function () {
-        return new this.shotType({
+        return this.shotType && new this.shotType({
             x: this.barrelEndX,
             y: this.barrelEndY,
             vectorX: this.targetVectorX,
             vectorY: this.targetVectorY,
             game: this.game,
             target: this.target,
-            radius: this.shotRadius
+            radius: this.shotRadius,
+            v: this.shotV
         });
     };
+
+    var LightCannon = createClass(Structure);
+
+    _.extend(LightCannon.fn, {
+        radius: 6,
+        barrelLength: 7,
+        rangeRadius: 100,
+        color: "#12AB40",
+        cooldownFrames: 72,
+        shotRadius: 1.5,
+        shotV: 2.5,
+        shotType: ShotCircle
+    });
+
+    var HeavyCannon = createClass(Structure);
+
+    _.extend(HeavyCannon.fn, {
+        radius: 7,
+        barrelLength: 4,
+        rangeRadius: 125,
+        color: "#1240AB",
+        cooldownFrames: 96,
+        shotRadius: 2.5,
+        shotV: 2,
+        shotType: ShotCircle
+    });
 
 //    // Export global instance.
     window.game = new Game().exports();
