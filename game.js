@@ -1124,7 +1124,7 @@
         radius: 6,
         barrelLength: 7,
         rangeRadius: 100,
-        color: "#40AB12",
+        color: "#12ABAB",
         cooldownFrames: 72,
         shotRadius: 1.5,
         shotV: 2.5,
@@ -1137,7 +1137,7 @@
         radius: 7,
         barrelLength: 4,
         rangeRadius: 125,
-        color: "#1240AB",
+        color: "#088080",
         cooldownFrames: 96,
         shotRadius: 2.5,
         shotV: 2,
@@ -1148,9 +1148,9 @@
 
     _.extend(LightPulseCannon.fn, {
         radius: 3,
-        barrelLength: 8,
+        barrelLength: 5,
         rangeRadius: 180,
-        color: "#8024DE",
+        color: "#DE8024",
         cooldownFrames: 108,
         shotSize: 5,
         shotV: 3,
@@ -1161,9 +1161,9 @@
 
     _.extend(HeavyPulseCannon.fn, {
         radius: 6,
-        barrelLength: 5,
+        barrelLength: 6,
         rangeRadius: 150,
-        color: "#DE8024",
+        color: "#AB4012",
         cooldownFrames: 144,
         shotSize: 6,
         shotV: 2.5,
