@@ -400,7 +400,7 @@
         this.clearContext(this.layer.highlights);
         this.clearContext(this.layer.ranges);
 
-        if (this.frameCount % 500 === 0) {
+        if (this.frameCount % 300 === 0) {
             this.monsters.push(new Monster({ hex: this.entranceHex }));
         }
 
@@ -1058,7 +1058,7 @@
     _.extend(ShotBolt.fn, {
         radius: 1.25,
         damage: 10,
-        v: 1
+        v: 3
     });
 
     var Structure = createClass(Circle, function () {
@@ -1188,13 +1188,13 @@
 
     _.extend(PlasmaCannon.fn, {
         radius: 8,
-        barrelLength: 3,
+        barrelLength: 5,
         rangeRadius: 150,
         color: "#AB4012",
         cooldownFrames: 144,
         shotRadius: 2.5,
-        shotSize: 3,
-        shotV: 4,
+        shotSize: 4,
+        shotV: 3,
         shotType: ShotBolt
     });
 /*
