@@ -279,9 +279,9 @@
 
             if (this.clickedHex) {
                 if (this.clickedHex.canBuild()) {
-                    
+
                     var structureType;
-                    switch (this.clickCount % 4) {
+                    switch (this.clickCount % 3) {
                         case 0:
                         structureType = LightCannon;
                         break;
@@ -291,11 +291,7 @@
                         break;
 
                         case 2:
-                        structureType = LightPulseCannon;
-                        break;
-
-                        case 3:
-                        structureType = HeavyPulseCannon;
+                        structureType = PlasmaCannon;
                         break;
                     }
 
@@ -725,9 +721,24 @@
 
         if (obj.instanceOf && obj.instanceOf(Line)) {
             // Assume that all lines will be relatively short compared to
-            // circles. Run collision detection on beginning and end of lines.
+            // circles. Run collision detection on beginning and end of the line.
             return this.collisionDetect(obj.toXY()) ||
                 this.collisionDetect(obj.toXY("end"));
+        }
+
+        if (obj.instanceOf && obj.instanceOf(Bolt)) {
+            // Assume that all bolts will be relatively short compared to
+            // circles. Run collision detection on beginning and end circles
+            // of the bolt.
+            return this.collisionDetect(new Circle({
+                x: obj.x,
+                y: obj.y,
+                radius: obj.radius
+            })) || this.collisionDetect(new Circle({
+                x: obj.endX,
+                y: obj.endY,
+                radius: obj.radius
+            }));
         }
 
         dx = Math.abs(obj.x - this.x);
@@ -738,6 +749,27 @@
         return dx < dr
             && dy < dr
             && Math.pow(dx, 2) + Math.pow(dy, 2) < Math.pow(dr, 2);
+    };
+
+    var Bolt = createClass(Line, Circle);
+
+    _.extend(Bolt.fn, {
+        radius: 2,
+        size: 4
+    });
+
+    Bolt.fn.path = function (context) {
+        context.lineWidth = this.radius * 2;
+        context.lineCap = "round";
+
+        context.beginPath();
+        context.moveTo(this.x, this.y);
+        context.lineTo(this.endX, this.endY);
+        context.strokeStyle = this.lineColor;
+        context.stroke();
+
+        context.lineWidth = 1;
+        context.lineCap = "butt";
     };
 
     var Monster = createClass(Circle, function () {
@@ -1008,9 +1040,9 @@
     _.extend(ShotCircle.fn, {
         radius: 1.25,
         damage: 1,
-        v: 0.8,
-        a: 0,
-        isTracking: false
+        v: 0.8
+//      a: 0,
+//      isTracking: false
     });
 
     var ShotLine = createClass(Shot, Line);
@@ -1019,6 +1051,14 @@
         size: 6,
         damage: 1,
         v: 3
+    });
+
+    var ShotBolt = createClass(Shot, Bolt);
+
+    _.extend(ShotBolt.fn, {
+        radius: 1.25,
+        damage: 10,
+        v: 1
     });
 
     var Structure = createClass(Circle, function () {
@@ -1144,6 +1184,20 @@
         shotType: ShotCircle
     });
 
+    var PlasmaCannon = createClass(Structure);
+
+    _.extend(PlasmaCannon.fn, {
+        radius: 8,
+        barrelLength: 3,
+        rangeRadius: 150,
+        color: "#AB4012",
+        cooldownFrames: 144,
+        shotRadius: 2.5,
+        shotSize: 3,
+        shotV: 4,
+        shotType: ShotBolt
+    });
+/*
     var LightPulseCannon = createClass(Structure);
 
     _.extend(LightPulseCannon.fn, {
@@ -1169,6 +1223,7 @@
         shotV: 2.5,
         shotType: ShotLine
     });
+*/
 //    // Export global instance.
     window.game = new Game().exports();
 //})(this);
