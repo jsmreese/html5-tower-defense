@@ -279,7 +279,7 @@
 
             if (this.clickedHex) {
                 if (this.clickedHex.canBuild()) {
-
+                    /*
                     var structureType;
                     switch (this.clickCount % 3) {
                         case 0:
@@ -296,6 +296,8 @@
                     }
 
                     structure = new structureType({ game: this, hex: this.clickedHex });
+                    */
+                    structure = new RocketLauncher({ game: this, hex: this.clickedHex });
                     this.structures.push(structure);
                     this.clickedHex.structure = structure;
                 }
@@ -772,6 +774,30 @@
         context.lineCap = "butt";
     };
 
+    var Rocket = createClass(Bolt);
+
+    _.extend(Rocket.fn, {
+        radius: 2,
+        size: 8
+    });
+
+    Rocket.fn.path = function (context) {
+        Bolt.fn.path.call(this, context);
+        /*
+        context.lineWidth = this.radius * 2;
+        context.lineCap = "round";
+
+        context.beginPath();
+        context.moveTo(this.x, this.y);
+        context.lineTo(this.endX, this.endY);
+        context.strokeStyle = this.lineColor;
+        context.stroke();
+
+        context.lineWidth = 1;
+        context.lineCap = "butt";
+        */
+    };
+
     var Monster = createClass(Circle, function () {
         if (this.hex) {
             this.setHex(this.hex);
@@ -1061,6 +1087,13 @@
         v: 3
     });
 
+    var ShotRocket = createClass(Shot, Rocket);
+
+    _.extend(ShotRocket.fn, {
+        damage: 15,
+        v: 3
+    });
+
     var Structure = createClass(Circle, function () {
         if (this.hex) {
             this.setHex(this.hex);
@@ -1114,21 +1147,28 @@
     };
 
     Structure.fn.setBarrelPosition = function () {
-        var barrelLength;
+        var barrelLength = this.barrelLength;
 
-        if (this.barrelLength) {
+        if (!this.barrelLength) {
+            return;
+        } else if (this.barrelIsCentered) {
+            this.barrelStartX = this.x - 0.5 * this.targetVectorX * barrelLength;
+            this.barrelStartY = this.y - 0.5 * this.targetVectorY * barrelLength;
+        } else {
             barrelLength = this.radius + this.barrelLength;
-
-            this.barrelEndX = this.x + this.targetVectorX * barrelLength;
-            this.barrelEndY = this.y + this.targetVectorY * barrelLength;
+            this.barrelStartX = this.x;
+            this.barrelStartY = this.y;
         }
+
+        this.barrelEndX = this.barrelStartX + this.targetVectorX * barrelLength;
+        this.barrelEndY = this.barrelStartY + this.targetVectorY * barrelLength;
     };
 
     Structure.fn.drawBarrel = function (context) {
         context.lineWidth = this.shotRadius * 2;
 
         context.beginPath();
-        context.moveTo(this.x, this.y);
+        context.moveTo(this.barrelStartX, this.barrelStartY);
         context.lineTo(this.barrelEndX, this.barrelEndY);
         context.strokeStyle = this.lineColor;
         context.stroke();
@@ -1154,7 +1194,8 @@
             target: this.target,
             radius: this.shotRadius,
             size: this.shotSize,
-            v: this.shotV
+            v: this.shotV,
+            a: this.shotA
         });
     };
 
@@ -1196,6 +1237,22 @@
         shotSize: 4,
         shotV: 3,
         shotType: ShotBolt
+    });
+
+    var RocketLauncher = createClass(Structure);
+
+    _.extend(RocketLauncher.fn, {
+        radius: 8,
+        barrelLength: 14,
+        barrelIsCentered: true,
+        rangeRadius: 160,
+        color: "#AB80AB",
+        cooldownFrames: 288,
+        shotRadius: 2,
+        shotSize: 10,
+        shotV: 0,
+        shotA: 0.1,
+        shotType: ShotRocket
     });
 /*
     var LightPulseCannon = createClass(Structure);
