@@ -279,9 +279,9 @@
 
             if (this.clickedHex) {
                 if (this.clickedHex.canBuild()) {
-                    /*
+                    
                     var structureType;
-                    switch (this.clickCount % 3) {
+                    switch (this.clickCount % 4) {
                         case 0:
                         structureType = LightCannon;
                         break;
@@ -293,11 +293,14 @@
                         case 2:
                         structureType = PlasmaCannon;
                         break;
+
+                        case 3:
+                        structureType = RocketLauncher;
+                        break;
                     }
 
                     structure = new structureType({ game: this, hex: this.clickedHex });
-                    */
-                    structure = new RocketLauncher({ game: this, hex: this.clickedHex });
+
                     this.structures.push(structure);
                     this.clickedHex.structure = structure;
                 }
@@ -805,8 +808,8 @@
     });
 
     _.extend(Monster.fn, {
-        vh: 0.5,
-        health: 4,
+        vh: 0.5, // Relative hex velocity. Controls how many frames are used to moe a monster from one hex to the next.
+        health: 30,
         radius: 7,
         color: color.monster
     });
@@ -1020,6 +1023,10 @@
 
     var Shot = createClass(function () {
         this.setVelocity();
+    });
+
+    _.extend(Shot.fn, {
+        //isTracking: true
     });
 
     Shot.fn.setVelocity = function () {
@@ -1249,7 +1256,7 @@
         color: "#AB80AB",
         cooldownFrames: 288,
         shotRadius: 2,
-        shotSize: 10,
+        shotSize: 12,
         shotV: 0,
         shotA: 0.1,
         shotType: ShotRocket
