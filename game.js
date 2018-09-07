@@ -279,7 +279,7 @@
 
             if (this.clickedHex) {
                 if (this.clickedHex.canBuild()) {
-                    
+
                     var structureType;
                     switch (this.clickCount % 4) {
                         case 0:
@@ -786,18 +786,26 @@
 
     Rocket.fn.path = function (context) {
         Bolt.fn.path.call(this, context);
+
         /*
-        context.lineWidth = this.radius * 2;
-        context.lineCap = "round";
+        // Draw lines
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(100, 40);
+        ctx.lineTo(100, 52);
+        ctx.stroke();
 
-        context.beginPath();
-        context.moveTo(this.x, this.y);
-        context.lineTo(this.endX, this.endY);
-        context.strokeStyle = this.lineColor;
-        context.stroke();
+        ctx.lineCap = 'butt';
+        ctx.lineWidth = 2;
 
-        context.lineWidth = 1;
-        context.lineCap = "butt";
+        ctx.moveTo(100, 44); // 1/3 length
+        ctx.lineJoin = "miter";
+        ctx.lineTo(98, 40); // 1/6 length
+        ctx.lineTo(102, 40);
+        ctx.lineTo(100, 44);
+        ctx.stroke();
         */
     };
 
