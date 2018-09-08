@@ -911,7 +911,7 @@
     Hex.fn.path = function (context) {
         context.beginPath();
 
-        var vertices = _.map([0, 1, 2, 3, 4, 5], this.vertex, this);
+        var vertices = _.map([0, 1, 2, 3, 4, 5], _.bind(this.vertex, this));
 
         context.moveTo(vertices[0].x, vertices[0].y);
 
